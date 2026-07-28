@@ -1,3 +1,4 @@
+httpx
 uvicorn
 fastapi
 langchain
@@ -12,4 +13,9 @@ pytest
 pytest-asyncio
 psycopg-binary
 python-dotenv
+python-multipart
 llama-cloud>=2.8
+llama-parse>=0.4.0
+langchain-text-splitters>=0.2.0
+supabase>=2.0.0
+requests>=2.31.0

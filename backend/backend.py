@@ -8,11 +8,18 @@ from fastapi.responses                  import StreamingResponse
 from fastapi.middleware.cors            import CORSMiddleware
 from pydantic                           import BaseModel, EmailStr
 from dotenv                             import load_dotenv
+from fastapi                            import File, UploadFile
 load_dotenv()
 
 from agent                              import RAGAgent
 from auth                               import get_current_user, CurrentUser
 from db                                 import get_checkpointer_context  # Import the context manager
+from rag_processor                      import process_upload
+from fastapi                            import File, UploadFile
+from supabase                           import create_client
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Global agent instance (initialized in lifespan)
 agent = None
@@ -113,6 +120,8 @@ async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_use
 ADMIN_API_KEY               =   os.environ.get("ADMIN_API_KEY")
 SUPABASE_URL                =   os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY   =   os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
 
 class InviteRequest(BaseModel):
     email: EmailStr
@@ -140,3 +149,40 @@ async def invite_user(payload: InviteRequest, x_admin_key: str = Header(None)):
     if resp.status_code >= 400:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
     return {"status": "invited", "email": payload.email}
+
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Upload a file, parse it to Markdown, chunk, embed, and store in Supabase.
+    """
+    # 1. Validate file extension
+    allowed_extensions = {"pdf", "docx", "txt", "md", "pptx"}
+    ext = file.filename.split(".")[-1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {ext}. Allowed: {', '.join(allowed_extensions)}"
+        )
+
+    # 2. Read file content
+    content = await file.read()
+
+    try:
+        # 3. Process the file (parse, chunk, embed, store)
+        result = await process_upload(
+            file_bytes=content,
+            file_name=file.filename,
+            user_id=user.id,
+            supabase_client=supabase_client
+        )
+        return result
+    except Exception as e:
+        logger.exception(f"Upload processing failed for user {user.id}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Processing failed: {str(e)}"
+        )
