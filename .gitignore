@@ -1,0 +1,27 @@
+# Environment variables
+.env
+.env*
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.test/
+
+# Node/Frontend
+node_modules/
+dist/
+.npm/
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project specific
+obsidian/
+output/
+*.log

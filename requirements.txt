@@ -1,0 +1,15 @@
+uvicorn
+fastapi
+langchain
+langgraph
+langchain_core
+langchain_ollama
+jwt
+email-validator
+langgraph-checkpoint-postgres
+asyncpg
+pytest
+pytest-asyncio
+psycopg-binary
+python-dotenv
+llama-cloud>=2.8
