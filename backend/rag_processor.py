@@ -1,13 +1,14 @@
 # rag_processor.py
 import os
+import json
 import tempfile
 import logging
 import requests
-from typing import List, Dict, Any
-from langchain.tools import tool
-from llama_parse import LlamaParse
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from supabase import Client
+
+from typing                         import List, Dict, Any
+from llama_parse                    import LlamaParse
+from langchain_text_splitters       import RecursiveCharacterTextSplitter
+from supabase                       import Client
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,6 @@ def parse_file(file_bytes: bytes, file_name: str) -> str:
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
-
     try:
         documents = parser.load_data(tmp_path)
         full_markdown = "\n\n".join(doc.text for doc in documents)
@@ -52,7 +52,7 @@ def embed_chunks(chunks: List[str]) -> List[List[float]]:
             response = requests.post(
                 OLLAMA_URL,
                 json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": chunk},
-                timeout=120  # increased from 30
+                timeout=120                         # increased from 30
             )
             response.raise_for_status()
             embedding = response.json()["embedding"]
@@ -64,19 +64,12 @@ def embed_chunks(chunks: List[str]) -> List[List[float]]:
     return embeddings
 
 
-async def process_upload(
-    file_bytes: bytes,
-    file_name: str,
-    user_id: str,
-    supabase_client: Client
-) -> Dict[str, Any]:
+async def process_upload( file_bytes: bytes, file_name: str, user_id: str, supabase_client: Client) -> Dict[str, Any]:
+
     logger.info(f"Processing upload: {file_name} for user {user_id}")
 
-    # 1. Parse
-    markdown = parse_file(file_bytes, file_name)
-
-    # 2. Insert document
-    doc_data = {
+    markdown = parse_file(file_bytes, file_name)    # 1. Parse
+    doc_data = {                                    # 2. Insert document
         "user_id": user_id,
         "file_name": file_name,
         "file_type": os.path.splitext(file_name)[1][1:],
@@ -85,14 +78,9 @@ async def process_upload(
     doc_result = supabase_client.table("documents").insert(doc_data).execute()
     document_id = doc_result.data[0]["id"]
 
-    # 3. Chunk
-    chunks = chunk_text(markdown)
-
-    # 4. Embed
-    embeddings = embed_chunks(chunks)
-
-    # 5. Insert chunks
-    chunk_records = [
+    chunks = chunk_text(markdown)                   # 3. chunk
+    embeddings = embed_chunks(chunks)               # 4. Embed
+    chunk_records = [                               # 5. Insert chunks
         {
             "document_id": document_id,
             "chunk_index": i,
@@ -110,7 +98,9 @@ async def process_upload(
 
 def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -> str:
     """
-    Search all documents in the knowledge base and return relevant chunks with citations.
+    Search all documents and return a JSON‑encoded list of relevant chunks.
+    Each chunk includes: chunk_id, document_id, file_name, content, similarity.
+    The LLM should cite chunks using the index in this list (1‑based).
     """
     # 1. Embed query
     response = requests.post(
@@ -118,6 +108,7 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -
         json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": query},
         timeout=60
     )
+    response.raise_for_status()
     query_embedding = response.json()["embedding"]
 
     # 2. Call the global search function
@@ -133,15 +124,20 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -
     print(f"[TOOL] Retrieved {len(result.data)} chunks with similarities:")
     for row in result.data:
         print(f"  - similarity: {row['similarity']:.3f}, file: {row['file_name']}")
-        
 
     if not result.data:
         return "No relevant documents found in the knowledge base."
 
-    # 3. Format results with citations
-    formatted = []
-    for i, row in enumerate(result.data, 1):
-        citation = f"[{i}] {row['file_name']}"
-        formatted.append(f"{citation}\n{row['chunk_content']}\n")
-    
-    return "\n".join(formatted)
+    # 3. Build structured list
+    chunks = []
+    for row in result.data:
+        chunks.append({
+            "chunk_id": row["chunk_id"],
+            "document_id": row["document_id"],
+            "file_name": row["file_name"],
+            "content": row["chunk_content"],
+            "similarity": row["similarity"]
+        })
+
+    # 4. Return as JSON string
+    return json.dumps(chunks, ensure_ascii=False)

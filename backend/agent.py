@@ -3,7 +3,7 @@ import operator
 from typing                     import Annotated, TypedDict, List
 from langchain_ollama           import ChatOllama
 from langchain.tools            import tool
-from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langgraph.graph            import StateGraph, END
 from langgraph.prebuilt         import ToolNode
 from rag_processor              import query_knowledge_base
@@ -14,12 +14,10 @@ load_dotenv()
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
-
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
 supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
 
 class RAGAgent:
     def __init__(self, model_name: str = "gemma4:31b-cloud", checkpointer=None, user_id: str = None):
@@ -31,14 +29,23 @@ class RAGAgent:
         self.graph = None
         print("[AGENT] Initialization complete")
 
+
     def _create_query_tool(self):
         @tool
         def query_knowledge_base_tool(query: str) -> str:
-            """Search the institutional knowledge base for documents related to the query."""
-            output  = query_knowledge_base(query, supabase_client)
-            print(f"\n\n========= QUERY PROMPT ==========\n{query}\n")
-            print(f"\n\n========== TOOL OUTPUT ==========\n{output}\n\n")
-            return output
+            """
+            Search the institutional knowledge base for documents related to the query.
+            Returns a JSON list of relevant chunks. Each chunk object has:
+            - chunk_id (uuid)
+            - document_id (uuid)
+            - file_name (string)
+            - content (string)
+            - similarity (float)
+            When using this information in your answer, cite each claim with the 
+            index (1-based) of the chunk in this list. At the end, list the sources 
+            with file names.
+            """
+            return query_knowledge_base(query, supabase_client)
         return query_knowledge_base_tool
 
     def _build_graph(self):
@@ -72,7 +79,10 @@ class RAGAgent:
 
     def call_model(self, state: AgentState):
         print(f"[AGENT] Calling LLM with {len(state['messages'])} messages")
-        response = self.llm_with_tools.invoke(state["messages"])
+        SYSTEM_PROMPT_FILE = "MOMO.md"
+        with open(SYSTEM_PROMPT_FILE, "r", encoding='utf-8') as f:
+            SYSTEM_PROMPT = SystemMessage(content=f.read())
+        response = self.llm_with_tools.invoke( [SYSTEM_PROMPT] + state["messages"])
         print(f"[AGENT] LLM response received")
         return {"messages": [response]}
 
