@@ -65,3 +65,34 @@ actually restrict access, not keeping this key secret.
 - Chat history now lives in Postgres (`chat_sessions` / `chat_messages`), scoped per user by Row Level Security — no more `localStorage`, so history follows a user across devices and survives a browser cache clear.
 - `/chat` now requires `Authorization: Bearer <token>`; the backend verifies it and scopes the LangGraph thread as `{user_id}::{session_id}` so users can't collide with or access each other's conversation memory.
 - Theme preference is the one thing still kept in `localStorage` — it's a device preference, not user data, so there's no reason to round-trip it through the database.
+
+
+# One time SQL setup (run in Supabase SQL runner)
+
+```python
+create extension if not exists vector;
+
+create table documents (
+  id uuid primary key default gen_random_uuid(),
+  content text,
+  metadata jsonb,
+  embedding vector(1536)  -- match your embedding model's dim
+);
+
+create index on documents using hnsw (embedding vector_cosine_ops);
+
+create or replace function match_documents(
+  query_embedding vector(1536),
+  match_threshold float default 0.78,
+  match_count int default 10
+)
+returns table (id uuid, content text, metadata jsonb, similarity float)
+language sql stable as $$
+  select id, content, metadata,
+         1 - (embedding <=> query_embedding) as similarity
+  from documents
+  where 1 - (embedding <=> query_embedding) > match_threshold
+  order by embedding <=> query_embedding
+  limit match_count;
+$$;
+```

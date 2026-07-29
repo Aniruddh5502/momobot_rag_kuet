@@ -2,9 +2,9 @@
 import os
 import tempfile
 import logging
-from typing import List, Dict, Any
-
 import requests
+from typing import List, Dict, Any
+from langchain.tools import tool
 from llama_parse import LlamaParse
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from supabase import Client
@@ -105,3 +105,43 @@ async def process_upload(
 
     logger.info(f"Document {document_id} stored with {len(chunks)} chunks.")
     return {"document_id": document_id, "chunk_count": len(chunks)}
+
+
+
+def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -> str:
+    """
+    Search all documents in the knowledge base and return relevant chunks with citations.
+    """
+    # 1. Embed query
+    response = requests.post(
+        OLLAMA_URL,
+        json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": query},
+        timeout=60
+    )
+    query_embedding = response.json()["embedding"]
+
+    # 2. Call the global search function
+    result = supabase_client.rpc(
+        "match_documents_global",
+        {
+            "query_embedding": query_embedding,
+            "match_threshold": 0.2,
+            "match_count": top_k
+        }
+    ).execute()
+
+    print(f"[TOOL] Retrieved {len(result.data)} chunks with similarities:")
+    for row in result.data:
+        print(f"  - similarity: {row['similarity']:.3f}, file: {row['file_name']}")
+        
+
+    if not result.data:
+        return "No relevant documents found in the knowledge base."
+
+    # 3. Format results with citations
+    formatted = []
+    for i, row in enumerate(result.data, 1):
+        citation = f"[{i}] {row['file_name']}"
+        formatted.append(f"{citation}\n{row['chunk_content']}\n")
+    
+    return "\n".join(formatted)

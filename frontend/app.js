@@ -1,9 +1,11 @@
 // app.js - Event listeners and initialization
+import './upload.js';
 import { dom } from './state.js';
 import { initAuth, handleSignIn, handleSetPassword, handleSignUp } from './auth.js';
 import { switchSession, handleSend, autoResize, isNearBottom, closeMobileSidebar } from './chat.js';
 import { scrollToBottom } from './ui.js';
 import { initTheme, toggleTheme } from './theme.js';
+
 
 // Event Listeners
 dom.signinPanel.addEventListener('submit', handleSignIn);

@@ -1,27 +1,45 @@
+import os
 import operator
-from typing import Annotated, TypedDict, List
-from langchain_ollama import ChatOllama
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
-from langgraph.graph import StateGraph, END
-from langgraph.prebuilt import ToolNode
+from typing                     import Annotated, TypedDict, List
+from langchain_ollama           import ChatOllama
+from langchain.tools            import tool
+from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage
+from langgraph.graph            import StateGraph, END
+from langgraph.prebuilt         import ToolNode
+from rag_processor              import query_knowledge_base
+from supabase                   import create_client
+from dotenv                     import load_dotenv
+
+load_dotenv()
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
-def query_knowledge_base(query: str) -> str:
-    """Search the internal knowledge base for documents related to the query."""
-    print(f"[RAG TOOL] Querying knowledge base for: {query}")
-    return f"[SIMULATED RAG RESULT]: The user is asking about '{query}'."
+supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
 
 class RAGAgent:
-    def __init__(self, model_name: str = "gemma4:31b-cloud", checkpointer=None):
+    def __init__(self, model_name: str = "gemma4:31b-cloud", checkpointer=None, user_id: str = None):
         print(f"[AGENT] Initializing with model: {model_name}")
         self.llm = ChatOllama(model=model_name, streaming=True)
-        self.tools = [query_knowledge_base]
+        self.tools = [self._create_query_tool()]
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.checkpointer = checkpointer
         self.graph = None
         print("[AGENT] Initialization complete")
+
+    def _create_query_tool(self):
+        @tool
+        def query_knowledge_base_tool(query: str) -> str:
+            """Search the institutional knowledge base for documents related to the query."""
+            output  = query_knowledge_base(query, supabase_client)
+            print(f"\n\n========= QUERY PROMPT ==========\n{query}\n")
+            print(f"\n\n========== TOOL OUTPUT ==========\n{output}\n\n")
+            return output
+        return query_knowledge_base_tool
 
     def _build_graph(self):
         print("[AGENT] Building LangGraph workflow...")
