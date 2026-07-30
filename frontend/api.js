@@ -1,6 +1,6 @@
 const API_BASE_URL = 'http://localhost:8000';
 
-export async function sendMessageToBackend(message, threadId, accessToken, onChunk, signal) {
+export async function sendMessageToBackend(message, threadId, accessToken, onEvent, signal) {
     let response;
     try {
         response = await fetch(`${API_BASE_URL}/chat`, {
@@ -23,7 +23,6 @@ export async function sendMessageToBackend(message, threadId, accessToken, onChu
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let fullResponse = '';
     let buffer = '';
 
     while (true) {
@@ -48,12 +47,8 @@ export async function sendMessageToBackend(message, threadId, accessToken, onChu
                 continue;
             }
 
-            if (data.error) throw new Error(data.error);
-            if (data.content) {
-                fullResponse += data.content;
-                onChunk(data.content);
-            }
+            // data can have type: 'ai', 'tool', or 'error'
+            onEvent(data);
         }
     }
-    return fullResponse;
 }

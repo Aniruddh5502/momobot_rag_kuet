@@ -96,7 +96,7 @@ async def process_upload( file_bytes: bytes, file_name: str, user_id: str, supab
 
 
 
-def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -> str:
+def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) -> str:
     """
     Search all documents and return a JSON‑encoded list of relevant chunks.
     Each chunk includes: chunk_id, document_id, file_name, content, similarity.
@@ -116,7 +116,7 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 10) -
         "match_documents_global",
         {
             "query_embedding": query_embedding,
-            "match_threshold": 0.2,
+            "match_threshold": 0.5,
             "match_count": top_k
         }
     ).execute()

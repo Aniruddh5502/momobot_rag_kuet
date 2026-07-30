@@ -1,7 +1,7 @@
 // chat.js - Chat logic (sending, streaming, switching)
 import { dom, state, WELCOME_TEXT } from './state.js';
 import { fetchMessages, createRemoteSession, insertRemoteMessage } from './sessions.js';
-import { appendUserBubble, appendBotBubble, appendTypingIndicator, renderSidebar, scrollToBottom } from './ui.js';
+import { appendUserBubble, appendBotBubble, appendTypingIndicator, renderSidebar, scrollToBottom, appendSourcesToBot } from './ui.js';
 import { sendMessageToBackend } from './api.js';
 
 export function isNearBottom() {
@@ -11,20 +11,54 @@ export function isNearBottom() {
 export async function switchSession(id) {
     state.activeSessionId = id;
     dom.messagesContainer.innerHTML = '';
+
     if (id === null) {
         appendBotBubble(WELCOME_TEXT);
         dom.chatTitleEl.textContent = 'New chat';
-    } else {
-        const session = state.sessions.find(s => s.id === id);
-        dom.chatTitleEl.textContent = session ? session.title : 'Chat';
-        const messages = await fetchMessages(id);
-        if (messages.length === 0) appendBotBubble(WELCOME_TEXT);
-        else for (const m of messages) {
-            if (m.role === 'user') appendUserBubble(m.content);
-            else appendBotBubble(m.content);
-        }
-        scrollToBottom();
+        renderSidebar();
+        closeMobileSidebar();
+        return;
     }
+
+    const session = state.sessions.find(s => s.id === id);
+    dom.chatTitleEl.textContent = session ? session.title : 'Chat';
+
+    // Get messages (from cache or DB)
+    const messages = await fetchMessages(id);
+    if (messages.length === 0) {
+        appendBotBubble(WELCOME_TEXT);
+    } else {
+        // Render messages, pairing assistant with sources
+        let i = 0;
+        while (i < messages.length) {
+            const m = messages[i];
+            if (m.role === 'user') {
+                appendUserBubble(m.content);
+                i++;
+            } else if (m.role === 'assistant') {
+                const botMsg = appendBotBubble(m.content);
+                // Check if next message is sources for this assistant
+                const next = messages[i + 1];
+                if (next && next.role === 'sources') {
+                    try {
+                        const sources = JSON.parse(next.content);
+                        appendSourcesToBot(botMsg, sources);
+                        i += 2; // skip both assistant and sources
+                    } catch (e) {
+                        console.warn('Failed to parse sources', e);
+                        i++; // skip only assistant
+                    }
+                } else {
+                    i++;
+                }
+            } else {
+                // Skip any other roles (e.g., orphaned sources)
+                i++;
+            }
+        }
+    }
+
+    scrollToBottom();
     renderSidebar();
     closeMobileSidebar();
 }
@@ -51,6 +85,7 @@ export async function handleSend(e) {
     const text = dom.userInput.value.trim();
     if (!text) return;
 
+    // Ensure a session exists
     if (state.activeSessionId === null) {
         const title = text.length > 42 ? text.slice(0, 42).trim() + '…' : text;
         try {
@@ -64,47 +99,95 @@ export async function handleSend(e) {
         }
     }
 
-    const cached = state.messagesCache.get(state.activeSessionId) || [];
+    const sessionId = state.activeSessionId;
+    const cached = state.messagesCache.get(sessionId) || [];
     cached.push({ role: 'user', content: text });
-    state.messagesCache.set(state.activeSessionId, cached);
+    state.messagesCache.set(sessionId, cached);
     appendUserBubble(text);
     renderSidebar();
-    insertRemoteMessage(state.activeSessionId, 'user', text);
-    dom.userInput.value = ''; autoResize(); scrollToBottom();
+    insertRemoteMessage(sessionId, 'user', text);
+    dom.userInput.value = '';
+    autoResize();
+    scrollToBottom();
 
     const typingEl = appendTypingIndicator();
     setStreamingState(true);
     state.abortController = new AbortController();
-    let botMsgEl = null, contentEl = null, currentText = '';
+
+    let botMsgEl = null;
+    let contentEl = null;
+    let currentText = '';
+    let toolResult = null;
+
+    const onEvent = (eventData) => {
+        if (eventData.type === 'ai') {
+            if (!botMsgEl) {
+                typingEl.remove();
+                botMsgEl = appendBotBubble('');
+                contentEl = botMsgEl.querySelector('.bubble-content');
+            }
+            currentText += eventData.content;
+            contentEl.innerHTML = marked.parse(currentText);
+            if (isNearBottom()) scrollToBottom();
+        } else if (eventData.type === 'tool') {
+            try {
+                toolResult = JSON.parse(eventData.content);
+                console.log(`[TOOL] Retrieved ${toolResult.length} sources.`);
+            } catch (e) {
+                console.warn('Failed to parse tool result', e);
+            }
+        } else if (eventData.type === 'error') {
+            typingEl.remove();
+            const errMsg = document.createElement('div');
+            errMsg.className = 'message bot error';
+            errMsg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="bubble"><div class="bubble-content"></div></div>`;
+            errMsg.querySelector('.bubble-content').textContent = eventData.content || 'Something went wrong.';
+            dom.messagesContainer.appendChild(errMsg);
+            scrollToBottom();
+        }
+    };
 
     try {
         const { data: { session: authSession } } = await supabaseClient.auth.getSession();
-        const finalResponse = await sendMessageToBackend(
-            text, state.activeSessionId, authSession?.access_token,
-            (chunk) => {
-                if (!botMsgEl) {
-                    typingEl.remove();
-                    botMsgEl = appendBotBubble('');
-                    contentEl = botMsgEl.querySelector('.bubble-content');
-                }
-                currentText += chunk;
-                contentEl.innerHTML = marked.parse(currentText);
-                if (isNearBottom()) scrollToBottom();
-            },
+        await sendMessageToBackend(
+            text,
+            sessionId,
+            authSession?.access_token,
+            onEvent,
             state.abortController.signal
         );
+
         typingEl.remove();
-        const finalText = currentText || finalResponse || '';
+        const finalText = currentText || '';
+
+        // Save assistant message
         if (finalText) {
             cached.push({ role: 'assistant', content: finalText });
-            await insertRemoteMessage(state.activeSessionId, 'assistant', finalText);
+            await insertRemoteMessage(sessionId, 'assistant', finalText);
         }
-        if (!botMsgEl && finalText) appendBotBubble(finalText);
+
+        // Save sources as a separate message with role 'sources'
+        if (toolResult && toolResult.length > 0) {
+            const sourcesJson = JSON.stringify(toolResult);
+            cached.push({ role: 'sources', content: sourcesJson });
+            await insertRemoteMessage(sessionId, 'sources', sourcesJson);
+        }
+
+        // If we never created a bot message, append final text
+        if (!botMsgEl && finalText) {
+            appendBotBubble(finalText);
+        }
+
+        // Attach sources to the existing bot bubble (if any)
+        if (toolResult && botMsgEl) {
+            appendSourcesToBot(botMsgEl, toolResult);
+        }
+
     } catch (err) {
         typingEl.remove();
         if (err.name === 'AbortError' && currentText) {
             cached.push({ role: 'assistant', content: currentText });
-            await insertRemoteMessage(state.activeSessionId, 'assistant', currentText);
+            await insertRemoteMessage(sessionId, 'assistant', currentText);
         } else if (err.name !== 'AbortError') {
             const errMsg = document.createElement('div');
             errMsg.className = 'message bot error';

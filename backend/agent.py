@@ -3,7 +3,7 @@ import operator
 from typing                     import Annotated, TypedDict, List
 from langchain_ollama           import ChatOllama
 from langchain.tools            import tool
-from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langgraph.graph            import StateGraph, END
 from langgraph.prebuilt         import ToolNode
 from rag_processor              import query_knowledge_base
@@ -95,6 +95,9 @@ class RAGAgent:
         
         async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
             msg, metadata = event
-            if isinstance(msg, AIMessage) and msg.content:
-                print(f"[AGENT] Yielding content chunk")
-                yield msg.content
+            if isinstance(msg, AIMessage):
+                if msg.content:
+                    yield {"type": "ai", "content": msg.content}
+            elif isinstance(msg, ToolMessage):
+                # Tool content is JSON string (from query_knowledge_base)
+                yield {"type": "tool", "content": msg.content}

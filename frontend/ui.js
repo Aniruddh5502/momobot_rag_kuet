@@ -3,13 +3,15 @@ import { dom, state, WELCOME_TEXT } from './state.js';
 import { deleteRemoteSession } from './sessions.js';
 import { switchSession, closeMobileSidebar } from './chat.js';
 
+let SNIPPET_LENGTH = 10;
+
 export function renderSidebar() {
     dom.chatHistoryEl.innerHTML = '';
     if (state.sessions.length === 0) {
         const empty = document.createElement('div');
         empty.className = 'chat-history-empty';
         empty.textContent = 'Your past chats will appear here.';
-        dom.chatHistoryEl.appendChild(empty);
+        dom.chatHistoryEl.appendChild(empty);jhk
         return;
     }
     for (const session of state.sessions) {
@@ -77,4 +79,88 @@ export function appendTypingIndicator() {
 export function scrollToBottom() {
     dom.messagesContainer.scrollTop = dom.messagesContainer.scrollHeight;
     dom.scrollBtn.hidden = true;
+}
+
+export function appendSourcesToBot(botMsgElement, sources) {
+    if (!botMsgElement || !sources || sources.length === 0) return;
+
+    const bubble = botMsgElement.querySelector('.bubble');
+    if (!bubble) return;
+
+    const oldSources = bubble.querySelector('.sources-section');
+    if (oldSources) oldSources.remove();
+
+    const sourcesDiv = document.createElement('div');
+    sourcesDiv.className = 'sources-section';
+
+    const heading = document.createElement('div');
+    heading.className = 'sources-heading';
+    heading.textContent = '📚 Sources';
+    sourcesDiv.appendChild(heading);
+
+    const list = document.createElement('ul');
+    list.className = 'sources-list';
+
+    sources.forEach((src, idx) => {
+        const index = idx + 1;
+        const li = document.createElement('li');
+        li.className = 'source-item';
+
+        // Citation number
+        const citation = document.createElement('span');
+        citation.className = 'source-citation';
+        citation.textContent = `[${index}]`;
+        li.appendChild(citation);
+
+        // File name
+        const file = document.createElement('span');
+        file.className = 'source-file';
+        file.textContent = src.file_name || 'Unknown file';
+        li.appendChild(file);
+
+        // Snippet container with full content
+        const snippetContainer = document.createElement('div');
+        snippetContainer.className = 'source-snippet-container';
+
+        const snippet = document.createElement('div');
+        snippet.className = 'source-snippet';
+        const fullContent = src.content || '';
+        const truncated = fullContent.length > SNIPPET_LENGTH ? fullContent.slice(0, SNIPPET_LENGTH) + '…' : fullContent;
+        snippet.textContent = truncated;
+        snippet.dataset.full = fullContent;
+        snippet.dataset.truncated = truncated;
+        snippet.dataset.expanded = 'false';
+
+        // Toggle button (only show if content is longer than 150 chars)
+        if (fullContent.length > SNIPPET_LENGTH) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'source-toggle-btn';
+            toggleBtn.textContent = 'Show more';
+            toggleBtn.type = 'button';
+
+            toggleBtn.addEventListener('click', () => {
+                const isExpanded = snippet.dataset.expanded === 'true';
+                if (isExpanded) {
+                    snippet.textContent = truncated;
+                    toggleBtn.textContent = 'Show more';
+                    snippet.dataset.expanded = 'false';
+                } else {
+                    snippet.textContent = fullContent;
+                    toggleBtn.textContent = 'Show less';
+                    snippet.dataset.expanded = 'true';
+                }
+            });
+
+            snippetContainer.appendChild(snippet);
+            snippetContainer.appendChild(toggleBtn);
+        } else {
+            snippetContainer.appendChild(snippet);
+        }
+
+        li.appendChild(snippetContainer);
+        list.appendChild(li);
+    });
+
+    sourcesDiv.appendChild(list);
+    bubble.appendChild(sourcesDiv);
 }

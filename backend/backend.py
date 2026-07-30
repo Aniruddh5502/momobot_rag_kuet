@@ -102,17 +102,18 @@ async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_use
     print(f"[CHAT ENDPOINT]      Scoped thread_id: {scoped_thread_id}")
 
     async def event_generator():
-        print("[EVENT GENERATOR]    Starting to stream response...")
+        print("[EVENT GENERATOR] Starting to stream response...")
         try:
             async for chunk in agent.stream_response(request.message, scoped_thread_id):
-                print(f"[EVENT GENERATOR]       GOT CHUNK: {chunk[:30] if chunk else chunk}...")
-                yield f"data: {json.dumps({'content': chunk})}\n\n"
-            print("[EVENT GENERATOR]    Streaming completed succesfully")
+                # chunk is a dict: {'type': 'ai'|'tool', 'content': ...}
+                yield f"data: {json.dumps(chunk)}\n\n"
+            print("[EVENT GENERATOR] Streaming completed successfully")
         except Exception as e:
-            print(f"[EVENT GENERATOR]       ERROR: {type(e).__name__}: {str(e)}")
+            print(f"[EVENT GENERATOR] ERROR: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
     print("[CHAT ENDPOINT]      Returning Streaming Response")
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

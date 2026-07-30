@@ -755,3 +755,81 @@ textarea {
 .auth-panel[hidden] {
     display: none !important;
 }
+
+/* Sources section inside bot bubble */
+
+.source-snippet-container {
+    margin-top: 0.2rem;
+}
+
+.source-snippet {
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;      /* preserve line breaks */
+}
+
+.source-toggle-btn {
+    background: none;
+    border: none;
+    color: var(--terracotta);
+    font-size: 0.72rem;
+    cursor: pointer;
+    padding: 0.1rem 0;
+    margin-top: 0.15rem;
+    text-decoration: underline;
+}
+.source-toggle-btn:hover {
+    opacity: 0.7;
+}
+
+
+
+.sources-section {
+    margin-top: 1.2rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--line);
+}
+
+.sources-heading {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+}
+
+.sources-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.source-item {
+    margin-bottom: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    background: var(--paper-deep);
+    border-radius: 6px;
+    font-size: 0.82rem;
+}
+
+.source-citation {
+    display: inline-block;
+    font-weight: 600;
+    color: var(--terracotta);
+    margin-right: 0.4rem;
+    min-width: 2.2rem;
+}
+
+.source-file {
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.source-snippet {
+    margin-top: 0.2rem;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+}
