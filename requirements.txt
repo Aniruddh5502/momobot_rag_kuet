@@ -20,3 +20,6 @@ langchain-text-splitters>=0.2.0
 supabase>=2.0.0
 requests>=2.31.0
 psycopg_pool>=3.2.0
+openai
+langchain_openai
+langchain-openrouter

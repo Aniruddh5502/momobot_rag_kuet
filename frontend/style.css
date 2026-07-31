@@ -2,40 +2,40 @@
    Tokens
 --------------------------------------------------- */
 :root {
-    --paper: #FAF9F5;
+    --paper: #d8d4d4;
     --paper-deep: #fcf6e8;
-    --paper-card: #FFFFFF;
-    --ink: #181817;
-    --ink-soft: #313131;
-    --terracotta: #747170;
-    --terracotta-hover: #AE5333;
-    --terracotta-tint: #F1DCCD;
-    --line: #E4DCCB;
+    --paper-card: #e3e1e1;
+    --ink: #0a0a0a;
+    --ink-soft: #373737;
+    --terracotta: #141414;
+    --terracotta-hover: #f5885d;
+    --terracotta-tint: #afaeae;
+    --line: #565554;
     --msg-bot-bg: #F1EBDF;
     --msg-user-bg: #c9c9c9;
     --msg-user-text: #020202;
-    --danger: #B3432B;
+    --danger: #f02c00;
 
     --sidebar-width: 272px;
     --radius-card: 14px;
-    --shadow-card: 0 1px 2px rgba(43, 38, 33, 0.06), 0 1px 1px rgba(43, 38, 33, 0.04);
+    --shadow-card: 0 1px 1px rgba(43, 38, 33, 0.06), 0 1px 1px rgba(43, 38, 33, 0.04);
     --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 [data-theme='dark'] {
-    --paper: #000000;
-    --paper-deep: #000000;
-    --paper-card: #272626;
+    --paper: #1e1e1e;
+    --paper-deep: #060c06;
+    --paper-card: #3e3f3e;
     --ink: #F0E9DC;
-    --ink-soft: #A79C8B;
-    --terracotta: salmon;
-    --terracotta-hover: salmon;
-    --terracotta-tint: #000000;
-    --line: #484848;
-    --msg-bot-bg: #262626;
-    --msg-user-bg: #3e3e3e;
+    --ink-soft: #dcdbd9;
+    --terracotta: #54c750;
+    --terracotta-hover: #54c750;
+    --terracotta-tint: #060c06;
+    --line: #e3dddd07;
+    --msg-bot-bg: #060c06;
+    --msg-user-bg: #060c06;
     --msg-user-text: #FDF2E9;
-    --danger: orange;
+    --danger: salmon;
 }
 
 /* ---------------------------------------------------
@@ -55,12 +55,12 @@ html:has(body[data-theme='dark']) {
 }
 
 body {
-    font-family: var(--font-body);
+    font-family: sans-serif;
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 200;
     background-color: var(--paper);
     color: var(--ink);
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
 }
@@ -105,7 +105,7 @@ textarea {
 --------------------------------------------------- */
 .app-container {
     display: flex;
-    height: 100vh;
+    height: 100dvh;
     width: 100vw;
 }
 
@@ -637,6 +637,7 @@ textarea {
     gap: 0.5rem;
     max-width: 760px;
     margin: 0 auto;
+    margin-top: 10px;
     background: var(--paper-card);
     border: 1px solid var(--line);
     border-radius: 16px;
@@ -700,17 +701,38 @@ textarea {
 }
 
 .send-btn.stoppable {
-    background: var(--ink);
+    background: var(--terracotta);
 }
 
 .send-btn.stoppable:hover {
-    background: var(--ink);
+    background: var(--terracotta);
     opacity: 0.85;
 }
 
 .send-btn.stoppable:active {
     transform: scale(0.92);
 }
+
+.send-icon { display: inline-flex; }
+.stop-icon { display: none; }
+
+.send-btn.stoppable .send-icon { display: none; }
+.send-btn.stoppable .stop-icon { display: inline-flex; }
+
+
+
+
+/* Upload Button Specific*/
+#upload-btn {
+    background: var(--paper-deep);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+}
+#upload-btn:hover {
+    background: var(--line);
+    color: var(--ink);
+}
+
 
 .input-hint {
     text-align: center;
@@ -729,7 +751,7 @@ textarea {
     .sidebar {
         position: fixed;
         z-index: 30;
-        height: 100vh;
+        height: 100dvh;
         transform: translateX(-100%);
         box-shadow: 0 0 0 rgba(0,0,0,0);
     }
@@ -773,7 +795,7 @@ textarea {
 .source-toggle-btn {
     background: none;
     border: none;
-    color: var(--terracotta);
+    color: var(--ink);
     font-size: 0.72rem;
     cursor: pointer;
     padding: 0.1rem 0;
@@ -832,4 +854,122 @@ textarea {
     font-size: 0.78rem;
     line-height: 1.4;
     overflow-wrap: break-word;
+}
+
+
+/* Stylings for the tool call block*/
+/* Tool call block – dimmed, collapsible */
+/* Tool call block – dimmed, collapsible, human-friendly */
+.tool-call-block {
+    background: var(--paper-deep);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 0.5rem 0.8rem;
+    margin: 0.5rem auto;           /* center horizontally */
+    max-width: 760px;              /* match message width */
+    width: 100%;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+}
+
+.tool-call-block:hover {
+    opacity: 1;
+}
+
+.tool-call-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+    flex-wrap: wrap;
+}
+.tool-call-header:hover .tool-call-toggle {
+    color: var(--terracotta);
+}
+
+.tool-call-toggle {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.tool-call-name {
+    font-weight: 500;
+    font-family: var(--font-display);
+    color: var(--terracotta);
+}
+
+.tool-call-args-summary {
+    color: var(--ink-soft);
+    opacity: 0.7;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tool-call-content {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--line);
+}
+
+.tool-call-args pre {
+    background: var(--paper);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    overflow-x: auto;
+    max-height: 100px;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+}
+
+.tool-call-result {
+    margin-top: 0.4rem;
+}
+.tool-call-result strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.tool-result-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.tool-result-list li {
+    background: var(--paper-card);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.3rem;
+    border: 1px solid var(--line);
+    font-size: 0.8rem;
+}
+.tool-result-file {
+    font-weight: 500;
+    color: var(--ink);
+}
+.tool-result-sim {
+    float: right;
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+    background: var(--paper-deep);
+    padding: 0.1rem 0.4rem;
+    border-radius: 12px;
+}
+.tool-result-snippet {
+    margin-top: 0.2rem;
+    color: var(--ink-soft);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    overflow-wrap: break-word;
+}
+.tool-result-placeholder {
+    color: var(--ink-soft);
+    font-style: italic;
+    font-size: 0.8rem;
 }

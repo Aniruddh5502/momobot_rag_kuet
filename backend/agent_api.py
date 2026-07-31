@@ -1,7 +1,7 @@
 import os
 import operator
 from typing                     import Annotated, TypedDict, List
-from langchain_ollama           import ChatOllama
+from langchain_openrouter       import ChatOpenRouter
 from langchain.tools            import tool
 from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langgraph.graph            import StateGraph, END
@@ -19,33 +19,38 @@ class AgentState(TypedDict):
 
 supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-# Model Available (Ollama)
-# gemma4:31b-cloud
-# deepseek-v4-flash
-# deepseek-v4-pro
-
-SYSTEM_PROMPT_FILE = "MOMO.md"
-
+# OpenRouter free models:
+# - google/gemma-4-31b-it:free
+# - google/gemma-4-26b-a4b-it:free
+# - meta-llama/llama-3.3-70b-instruct:free
+# - deepseek/deepseek-v4-flash:free
+# Set your preferred model via environment variable OPENROUTER_MODEL
+# Default: "google/gemma-4-31b-it:free"
 
 class RAGAgent:
-    def __init__(self, model_name: str = "gemma4:31b-cloud", checkpointer=None, user_id: str = None):
-        print(f"[AGENT] Initializing with model: {model_name}")
-        self.llm = ChatOllama(model=model_name, streaming=True)
+    def __init__(self, model_name: str = None, checkpointer=None, user_id: str = None):
+        # Use environment variable if provided, else fallback to default
+        if model_name is None:
+            model_name = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
+        print(f"[AGENT] Initializing with OpenRouter model: {model_name}")
+        
+        # ChatOpenRouter reads OPENROUTER_API_KEY from environment automatically.
+        # Do NOT pass openai_api_key, base_url, or default_headers.
+        self.llm = ChatOpenRouter(
+            model=model_name,
+            temperature=0.7,
+            streaming=True,
+            max_retries=5,           # optional: auto-retry on transient failures
+        )
         self.tools = [self._create_query_tool()]
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.checkpointer = checkpointer
         self.graph = None
-
-        # Read the system prompt once at startup instead of on every single
-        # turn - it doesn't change, no reason to hit disk on every call.
-        with open(SYSTEM_PROMPT_FILE, "r", encoding='utf-8') as f:
-            self.system_prompt = SystemMessage(content=f.read())
-
         print("[AGENT] Initialization complete")
 
     def _create_query_tool(self):
         @tool
-        def query(query: str) -> str:
+        def query_knowledge_base_tool(query: str) -> str:
             """
             Search the institutional knowledge base for documents related to the query.
             Returns a JSON list of relevant chunks. Each chunk object has:
@@ -54,12 +59,12 @@ class RAGAgent:
             - file_name (string)
             - content (string)
             - similarity (float)
-            When using this information in your answer, cite each claim with the
-            index (1-based) of the chunk in this list. At the end, list the sources
+            When using this information in your answer, cite each claim with the 
+            index (1-based) of the chunk in this list. At the end, list the sources 
             with file names.
             """
             return query_knowledge_base(query, supabase_client)
-        return query
+        return query_knowledge_base_tool
 
     def _build_graph(self):
         print("[AGENT] Building LangGraph workflow...")
@@ -92,7 +97,10 @@ class RAGAgent:
 
     async def call_model(self, state: AgentState):
         print(f"[AGENT] Calling LLM with {len(state['messages'])} messages")
-        response = await self.llm_with_tools.ainvoke([self.system_prompt] + state["messages"])
+        SYSTEM_PROMPT_FILE = "MOMO.md"
+        with open(SYSTEM_PROMPT_FILE, "r", encoding='utf-8') as f:
+            SYSTEM_PROMPT = SystemMessage(content=f.read())
+        response = await self.llm_with_tools.ainvoke([SYSTEM_PROMPT] + state["messages"])
         print(f"[AGENT] LLM response received")
         return {"messages": [response]}
 
@@ -106,49 +114,25 @@ class RAGAgent:
         }
         print("[AGENT] Starting graph stream...")
 
-        # Track which tool_call ids we've already announced a "decision" for,
-        # so we don't emit the same tool_call event twice if it shows up
-        # across multiple chunks.
-        announced_tool_calls = set()
-
         async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
             msg, metadata = event
-            print("=" * 60)
-            print(f"[RAW EVENT] type={type(msg).__name__}  langgraph_node={metadata.get('langgraph_node')}")
+            print("="*60)
+            print(f"[RAW EVENT] type={type(msg).__name__}  metadata_keys={list(metadata.keys())}")
+            print(f"  langgraph_node: {metadata.get('langgraph_node')}")
             print(f"  content: {msg.content!r}")
 
             if isinstance(msg, AIMessage):
-                # --- Tool call decision + parameters ---
-                tool_calls = getattr(msg, 'tool_calls', None)
-                if tool_calls:
-                    print(f"  tool_calls: {tool_calls}")
-                    for tc in tool_calls:
-                        tc_id = tc.get('id')
-                        if tc_id in announced_tool_calls:
-                            continue
-                        announced_tool_calls.add(tc_id)
-                        yield {
-                            "type": "tool_call",
-                            "content": {
-                                "id": tc_id,
-                                "name": tc.get('name'),
-                                "args": tc.get('args'),
-                            },
-                        }
-
-                # --- Regular assistant text ---
+                # tool_calls is where "decision to call a tool + its parameters" lives
+                if getattr(msg, 'tool_calls', None):
+                    print(f"  tool_calls: {msg.tool_calls}")
+                if getattr(msg, 'tool_call_chunks', None):
+                    print(f"  tool_call_chunks: {msg.tool_call_chunks}")
                 if msg.content:
                     yield {"type": "ai", "content": msg.content}
 
             elif isinstance(msg, ToolMessage):
-                print(f"  tool_call_id: {msg.tool_call_id}  name: {msg.name}")
-                yield {
-                    "type": "tool_result",
-                    "content": {
-                        "tool_call_id": msg.tool_call_id,
-                        "name": msg.name,
-                        "result": msg.content,
-                    },
-                }
+                print(f"  tool_call_id: {msg.tool_call_id}")
+                print(f"  name: {msg.name}")
+                yield {"type": "tool", "content": msg.content}
 
         print("[AGENT] Stream finished")

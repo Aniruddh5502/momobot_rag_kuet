@@ -1,7 +1,8 @@
+
 // chat.js - Chat logic (sending, streaming, switching)
 import { dom, state, WELCOME_TEXT } from './state.js';
 import { fetchMessages, createRemoteSession, insertRemoteMessage } from './sessions.js';
-import { appendUserBubble, appendBotBubble, appendTypingIndicator, renderSidebar, scrollToBottom, appendSourcesToBot } from './ui.js';
+import { appendUserBubble, appendBotBubble, appendTypingIndicator, renderSidebar, scrollToBottom, appendSourcesToBot, createToolCallBlock, updateToolCallBlock } from './ui.js';
 import { sendMessageToBackend } from './api.js';
 
 export function isNearBottom() {
@@ -72,12 +73,14 @@ export function closeMobileSidebar() {
 
 function setStreamingState(streaming) {
     state.isStreaming = streaming;
-    dom.sendIcon.hidden = streaming;
-    dom.stopIcon.hidden = !streaming;
     dom.sendBtn.classList.toggle('stoppable', streaming);
     dom.sendBtn.title = streaming ? 'Stop generating' : 'Send';
     dom.userInput.disabled = streaming;
 }
+
+
+
+
 
 export async function handleSend(e) {
     e.preventDefault();
@@ -118,6 +121,7 @@ export async function handleSend(e) {
     let contentEl = null;
     let currentText = '';
     let toolResult = null;
+    const toolBlocks = new Map();   // track tool call blocks by id
 
     const onEvent = (eventData) => {
         if (eventData.type === 'ai') {
@@ -129,21 +133,37 @@ export async function handleSend(e) {
             currentText += eventData.content;
             contentEl.innerHTML = marked.parse(currentText);
             if (isNearBottom()) scrollToBottom();
-        } else if (eventData.type === 'tool') {
+        }
+        else if (eventData.type === 'tool_call') {
+            // Create and insert a new tool call block
+            const block = createToolCallBlock(eventData.content);
+            toolBlocks.set(eventData.content.id, block);
+            dom.messagesContainer.appendChild(block);
+            if (isNearBottom()) scrollToBottom();
+        }
+        else if (eventData.type === 'tool_result') {
+            // Update the matching tool block
+            const block = toolBlocks.get(eventData.content.tool_call_id);
+            if (block) {
+                updateToolCallBlock(block, eventData.content);
+            }
+            // Also parse the result for sources (existing logic)
             try {
-                toolResult = JSON.parse(eventData.content);
+                const resultStr = eventData.content.result;
+                toolResult = JSON.parse(resultStr);
                 console.log(`[TOOL] Retrieved ${toolResult.length} sources.`);
             } catch (e) {
                 console.warn('Failed to parse tool result', e);
             }
-        } else if (eventData.type === 'error') {
+        }
+        else if (eventData.type === 'error') {
             typingEl.remove();
             const errMsg = document.createElement('div');
             errMsg.className = 'message bot error';
             errMsg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="bubble"><div class="bubble-content"></div></div>`;
             errMsg.querySelector('.bubble-content').textContent = eventData.content || 'Something went wrong.';
             dom.messagesContainer.appendChild(errMsg);
-            scrollToBottom();
+            if (isNearBottom()) scrollToBottom();
         }
     };
 
@@ -194,7 +214,7 @@ export async function handleSend(e) {
             errMsg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 8v5M12 16h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/></svg></div><div class="bubble"><div class="bubble-content"></div></div>`;
             errMsg.querySelector('.bubble-content').textContent = err.message || 'Something went wrong.';
             dom.messagesContainer.appendChild(errMsg);
-            scrollToBottom();
+            if (isNearBottom()) scrollToBottom();
         }
     } finally {
         setStreamingState(false);
@@ -208,3 +228,7 @@ function autoResize() {
     dom.userInput.style.height = Math.min(dom.userInput.scrollHeight, 160) + 'px';
 }
 export { autoResize };
+
+
+
+

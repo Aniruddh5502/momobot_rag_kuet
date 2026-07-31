@@ -11,7 +11,7 @@ export function renderSidebar() {
         const empty = document.createElement('div');
         empty.className = 'chat-history-empty';
         empty.textContent = 'Your past chats will appear here.';
-        dom.chatHistoryEl.appendChild(empty);jhk
+        dom.chatHistoryEl.appendChild(empty);
         return;
     }
     for (const session of state.sessions) {
@@ -48,10 +48,31 @@ export function appendUserBubble(text) {
     return msg;
 }
 
+
 export function appendBotBubble(text) {
     const msg = document.createElement('div');
     msg.className = 'message bot';
-    msg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M6 4.5h9l3.5 3.5v11.5H6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12h6M9 15.3h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="bubble"><div class="bubble-content"></div><div class="bubble-meta"><button class="copy-btn" type="button" title="Copy response"><svg viewBox="0 0 24 24" width="12" height="12" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 16V5a1 1 0 0 1 1-1h11" stroke="currentColor" stroke-width="1.5"/></svg><span>Copy</span></button></div></div>`;
+    /*msg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M6 4.5h9l3.5 3.5v11.5H6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12h6M9 15.3h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="bubble"><div class="bubble-content"></div><div class="bubble-meta"><button class="copy-btn" type="button" title="Copy response"><svg viewBox="0 0 24 24" width="12" height="12" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 16V5a1 1 0 0 1 1-1h11" stroke="currentColor" stroke-width="1.5"/></svg><span>Copy</span></button></div></div>`;*/
+    msg.innerHTML = `
+        <div class="avatar avatar-bot" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 22 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.41166 19.4893L10.5995 16.3015M10.5995 16.3015L13.7873 19.4893M10.5995 16.3015V4.18781M13.7873 1L10.5995 4.18781M10.5995 4.18781L7.41166 1M1.00024 12.1063L5.35487 13.2731M5.35487 13.2731L4.18805 17.6277M5.35487 13.2731L15.8456 7.21626M20.2002 8.38308L15.8456 7.21626M15.8456 7.21626L17.0124 2.86163M4.18805 2.86163L5.35487 7.21626M5.35487 7.21626L1.00024 8.38307M5.35487 7.21626L15.8456 13.2731M17.0124 17.6277L15.8456 13.2731M15.8456 13.2731L20.2002 12.1063" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="bubble">
+            <div class="bubble-content"></div>
+            <div class="bubble-meta">
+                <button class="copy-btn" type="button" title="Copy response">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none">
+                        <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M5 16V5a1 1 0 0 1 1-1h11" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                    <span>Copy</span>
+                </button>
+            </div>
+        </div>
+    `;
     const contentEl = msg.querySelector('.bubble-content');
     contentEl.innerHTML = text ? marked.parse(text) : '';
     msg.querySelector('.copy-btn').addEventListener('click', async () => {
@@ -163,4 +184,97 @@ export function appendSourcesToBot(botMsgElement, sources) {
 
     sourcesDiv.appendChild(list);
     bubble.appendChild(sourcesDiv);
+}
+
+
+
+// Adding two new functions to show tool calls in the web ui with details of the tool calls
+// and their responses/results with dropdown option like claude
+// ui.js – add these exports
+
+
+
+/**
+ * Create a collapsible tool call block.
+ * @param {Object} callData - { id, name, args }
+ * @returns {HTMLElement} The block element.
+ */
+// ui.js – add these two functions
+// ui.js
+
+// ui.js
+
+export function createToolCallBlock(callData) {
+    const container = document.createElement('div');
+    container.className = 'tool-call-block';
+    container.dataset.callId = callData.id;
+
+    // Show the query (or a summary) in the header
+    let queryText = '';
+    if (callData.args && callData.args.query) {
+        queryText = `"${callData.args.query}"`;
+    } else {
+        queryText = JSON.stringify(callData.args).slice(0, 50) + '…';
+    }
+
+    const header = document.createElement('div');
+    header.className = 'tool-call-header';
+    header.innerHTML = `
+        <span class="tool-call-toggle">▶</span>
+        <span class="tool-call-name">${callData.name}</span>
+        <span class="tool-call-args-summary">${queryText}</span>
+    `;
+
+    const content = document.createElement('div');
+    content.className = 'tool-call-content';
+    content.hidden = true;
+
+    // Only the result section – no arguments dump
+    const resultSection = document.createElement('div');
+    resultSection.className = 'tool-call-result';
+    resultSection.innerHTML = `<strong>Retrieved chunks</strong><div class="tool-result-placeholder">Waiting for results…</div>`;
+
+    content.appendChild(resultSection);
+    container.appendChild(header);
+    container.appendChild(content);
+
+    header.addEventListener('click', () => {
+        const isHidden = content.hidden;
+        content.hidden = !isHidden;
+        header.querySelector('.tool-call-toggle').textContent = isHidden ? '▼' : '▶';
+    });
+
+    return container;
+}
+
+export function updateToolCallBlock(block, resultData) {
+    const resultContainer = block.querySelector('.tool-call-result');
+    const placeholder = resultContainer?.querySelector('.tool-result-placeholder');
+    if (!resultContainer) return;
+
+    try {
+        const parsed = JSON.parse(resultData.result);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            const list = document.createElement('ul');
+            list.className = 'tool-result-list';
+            parsed.forEach((item) => {
+                const li = document.createElement('li');
+                const file = item.file_name || 'Unknown file';
+                const similarity = item.similarity ? (item.similarity * 100).toFixed(1) + '%' : '';
+                const snippet = item.content ? item.content.slice(0, 150) + (item.content.length > 150 ? '…' : '') : '';
+                li.innerHTML = `
+                    <span class="tool-result-file">📄 ${file}</span>
+                    ${similarity ? `<span class="tool-result-sim">${similarity}</span>` : ''}
+                    <div class="tool-result-snippet">${snippet}</div>
+                `;
+                list.appendChild(li);
+            });
+            placeholder.replaceWith(list);
+        } else {
+            // Fallback: show as plain text
+            placeholder.textContent = JSON.stringify(parsed, null, 2);
+        }
+    } catch (e) {
+        placeholder.textContent = resultData.result;
+    }
 }
