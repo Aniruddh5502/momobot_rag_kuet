@@ -33,3 +33,10 @@ We use **Vitest** + **jsdom** to verify logic without relying on a live browser 
 - [ ] Complete frontend test coverage (`auth.test.js`, `sessions.test.js`).
 - [ ] Swap backend `MemorySaver` for a persistent LangGraph checkpointer (Postgres/SQLite) to survive server restarts.
 - [ ] Implement backend rate limiting for the `/chat` endpoint.
+
+
+## To Open the html file as a website
+
+```bash
+python3 -m http.server 8000
+```

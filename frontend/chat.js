@@ -9,6 +9,7 @@ export function isNearBottom() {
     return dom.messagesContainer.scrollHeight - dom.messagesContainer.scrollTop - dom.messagesContainer.clientHeight < 120;
 }
 
+
 export async function switchSession(id) {
     state.activeSessionId = id;
     dom.messagesContainer.innerHTML = '';
@@ -132,22 +133,21 @@ export async function handleSend(e) {
             }
             currentText += eventData.content;
             contentEl.innerHTML = marked.parse(currentText);
+            // Auto‑scroll only if already near bottom
             if (isNearBottom()) scrollToBottom();
         }
         else if (eventData.type === 'tool_call') {
-            // Create and insert a new tool call block
             const block = createToolCallBlock(eventData.content);
             toolBlocks.set(eventData.content.id, block);
             dom.messagesContainer.appendChild(block);
             if (isNearBottom()) scrollToBottom();
         }
         else if (eventData.type === 'tool_result') {
-            // Update the matching tool block
             const block = toolBlocks.get(eventData.content.tool_call_id);
             if (block) {
                 updateToolCallBlock(block, eventData.content);
+                if (isNearBottom()) scrollToBottom();
             }
-            // Also parse the result for sources (existing logic)
             try {
                 const resultStr = eventData.content.result;
                 toolResult = JSON.parse(resultStr);
@@ -201,6 +201,8 @@ export async function handleSend(e) {
         // Attach sources to the existing bot bubble (if any)
         if (toolResult && botMsgEl) {
             appendSourcesToBot(botMsgEl, toolResult);
+            // Update button state after sources are rendered
+            if (isNearBottom()) scrollToBottom();
         }
 
     } catch (err) {

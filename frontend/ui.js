@@ -52,7 +52,13 @@ export function appendUserBubble(text) {
 export function appendBotBubble(text) {
     const msg = document.createElement('div');
     msg.className = 'message bot';
-    /*msg.innerHTML = `<div class="avatar avatar-bot" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M6 4.5h9l3.5 3.5v11.5H6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 12h6M9 15.3h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div><div class="bubble"><div class="bubble-content"></div><div class="bubble-meta"><button class="copy-btn" type="button" title="Copy response"><svg viewBox="0 0 24 24" width="12" height="12" fill="none"><rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M5 16V5a1 1 0 0 1 1-1h11" stroke="currentColor" stroke-width="1.5"/></svg><span>Copy</span></button></div></div>`;*/
+    
+    
+    /*
+    This is the Icon that will bw showing beside the bot message
+    indicating that the message content is from the Bot. Any svg
+    can be pasted here to show that icon from figma copy as svg
+    */
     msg.innerHTML = `
         <div class="avatar avatar-bot" aria-hidden="true">
             <svg width="14" height="14" viewBox="0 0 22 21" fill="none" xmlns="http://www.w3.org/2000/svg">

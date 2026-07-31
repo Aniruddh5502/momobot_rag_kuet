@@ -9,16 +9,29 @@ from typing                         import List, Dict, Any
 from llama_parse                    import LlamaParse
 from langchain_text_splitters       import RecursiveCharacterTextSplitter
 from supabase                       import Client
+from docx                           import Document
+import io
 
 logger = logging.getLogger(__name__)
 
 OLLAMA_EMBEDDING_MODEL = os.environ.get("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/embeddings")
 
-def parse_file(file_bytes: bytes, file_name: str) -> str:
-    ext = os.path.splitext(file_name)[1].lower()
-    if ext == ".txt":
-        return file_bytes.decode('utf-8', errors="ignore")
+def _parse_text_like(file_bytes: bytes) -> str:
+    """Handles .txt and .md files via simple decoding."""
+    try:
+        return file_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        # Fallback to latin-1 if utf-8 fails
+        return file_bytes.decode('latin-1', errors="ignore")
+
+def _parse_docx(file_bytes: bytes) -> str:
+    """Handles .docx files using python-docx."""
+    doc = Document(io.BytesIO(file_bytes))
+    return "\n".join([para.text for para in doc.paragraphs])
+
+def _parse_heavy(file_bytes: bytes, file_name: str) -> str:
+    """Handles complex files (PDF, PPTX) using LlamaParse."""
     api_key = os.environ.get("LLAMA_CLOUD_API_KEY")
     if not api_key:
         raise ValueError("LLAMA_CLOUD_API_KEY environment variable not set.")
@@ -34,6 +47,24 @@ def parse_file(file_bytes: bytes, file_name: str) -> str:
         return full_markdown
     finally:
         os.unlink(tmp_path)
+
+def parse_file(file_bytes: bytes, file_name: str) -> str:
+    """
+    Dispatcher that routes files to the appropriate parser based on extension.
+    """
+    ext = os.path.splitext(file_name)[1].lower()
+    
+    # 1. Simple text-based files
+    if ext in [".txt", ".md"]:
+        return _parse_text_like(file_bytes)
+    
+    # 2. Word documents
+    if ext == ".docx":
+        return _parse_docx(file_bytes)
+    
+    # 3. Complex documents (PDF, PPTX, etc.)
+    # We treat everything else as "heavy" provided it's in our allowed list
+    return _parse_heavy(file_bytes, file_name)
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(
@@ -121,7 +152,7 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) ->
         }
     ).execute()
 
-    print(f"[TOOL] Retrieved {len(result.data)} chunks with similarities:")
+    print(f"[TOOL] Retrieved {result.data} chunks with similarities:")
     for row in result.data:
         print(f"  - similarity: {row['similarity']:.3f}, file: {row['file_name']}")
 

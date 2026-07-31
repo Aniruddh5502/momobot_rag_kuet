@@ -37,12 +37,17 @@ async def lifespan(app: FastAPI):
         print("[LIFESPAN]   Shutting Down...")
         # Cleanup is handled automatically when exiting the 'async with' block
 
+# Load CORS origins from .env
+CORS_ORIGINS_STR = os.environ.get("CORS_ALLOWED_ORIGINS", "*")
+# Handle both comma-separated strings and single "*"
+CORS_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_STR.split(",")] if CORS_ORIGINS_STR != "*" else ["*"]
+
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True if "*" not in CORS_ORIGINS else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -58,7 +63,7 @@ class SignupRequest(BaseModel):
 @app.post("/signup")
 async def signup(payload: SignupRequest):
     # Domain restriction for KUET
-    if not payload.email.endswith("@gmail.com"):
+    if not payload.email.endswith("@kuet.ac.bd"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Registration is restricted to @kuet.ac.bd email addresses."

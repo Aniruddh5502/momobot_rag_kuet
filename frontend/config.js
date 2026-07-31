@@ -10,4 +10,6 @@
 // ---------------------------------------------------------------
 const SUPABASE_URL = 'https://xjapflgvioxevliwlzux.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYXBmbGd2aW94ZXZsaXdsenV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMzc2MjMsImV4cCI6MjEwMDcxMzYyM30.TwmTBU1RXAgFG_A0ayjWcF9d6TAEqukel_Cj_rZO2_4';
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:8001' 
+    : 'https://your-backend-url.railway.app'; // Replace this once deployed

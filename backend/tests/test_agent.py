@@ -54,4 +54,4 @@ async def test_stream_response_yields_ai_content():
     async for chunk in agent.stream_response("Hi", "thread-1"):
         chunks.append(chunk)
 
-    assert chunks == ["Hello ", "world!"]
+    assert chunks == [{"type": "ai", "content": "Hello "}, {"type": "ai", "content": "world!"}]

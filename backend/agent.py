@@ -9,6 +9,7 @@ from langgraph.prebuilt         import ToolNode
 from rag_processor              import query_knowledge_base
 from supabase                   import create_client
 from dotenv                     import load_dotenv
+from sanitizer                  import sanitize_input
 
 load_dotenv()
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -24,7 +25,9 @@ supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 # deepseek-v4-flash
 # deepseek-v4-pro
 
-SYSTEM_PROMPT_FILE = "MOMO.md"
+# Get the directory where agent.py is located
+AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SYSTEM_PROMPT_FILE = os.path.join(AGENT_DIR, "MOMO.md")
 
 
 class RAGAgent:
@@ -99,7 +102,13 @@ class RAGAgent:
     async def stream_response(self, user_input: str, thread_id: str):
         print(f"[AGENT] stream_response called with thread_id: {thread_id}")
         self.ensure_graph()
-        inputs = {"messages": [HumanMessage(content=user_input)]}
+        
+        # --- Input Sanitization ---
+        sanitized_input, modified = sanitize_input(user_input)
+        if modified:
+            print(f"[SECURITY] Input sanitized. Original: {user_input!r} -> Result: {sanitized_input!r}")
+        
+        inputs = {"messages": [HumanMessage(content=sanitized_input)]}
         config = {
             "configurable": {"thread_id": thread_id},
             "stream_subgraphs": True

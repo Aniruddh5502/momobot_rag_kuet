@@ -2,15 +2,15 @@
    Tokens
 --------------------------------------------------- */
 :root {
-    --paper: #d8d4d4;
-    --paper-deep: #fcf6e8;
+    --paper: #faf9f5;
+    --paper-deep: #f1f0f0;
     --paper-card: #e3e1e1;
-    --ink: #0a0a0a;
-    --ink-soft: #373737;
-    --terracotta: #141414;
+    --ink: #000000;
+    --ink-soft: #121212;
+    --terracotta: #232524;
     --terracotta-hover: #f5885d;
     --terracotta-tint: #afaeae;
-    --line: #565554;
+    --line: #56555403;
     --msg-bot-bg: #F1EBDF;
     --msg-user-bg: #c9c9c9;
     --msg-user-text: #020202;
@@ -55,9 +55,9 @@ html:has(body[data-theme='dark']) {
 }
 
 body {
-    font-family: sans-serif;
-    font-size: 16px;
-    font-weight: 200;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 20px;
+    font-weight: 400;
     background-color: var(--paper);
     color: var(--ink);
     height: 100dvh;
@@ -133,9 +133,8 @@ textarea {
     top: 1rem;
     left: 0.75rem;
     z-index: 15;
-    background: var(--paper-card);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow-card);
+    background: var(--paper);
+    /*border: 1px solid var(--line);*/
 }
 
 @media (max-width: 720px) {
@@ -185,7 +184,7 @@ textarea {
     width: 100%;
     padding: 0.6rem 0.75rem;
     background: var(--paper-card);
-    border: 1px solid var(--line);
+    /*border: 1px solid var(--line);*/
     border-radius: 10px;
     color: var(--ink);
     font-size: 0.88rem;
@@ -211,16 +210,17 @@ textarea {
     align-items: center;
     justify-content: space-between;
     gap: 0.4rem;
-    padding: 0.55rem 0.7rem;
-    border-radius: 8px;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
     font-size: 0.85rem;
     color: var(--ink-soft);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: transparent;
+    background: var(--paper-card);
     border: none;
     width: 100%;
+    margin:2px;
     text-align: left;
     transition: background var(--transition), color var(--transition);
 }
@@ -538,7 +538,7 @@ textarea {
     background: var(--paper-deep);
     border: 1px solid var(--line);
     border-radius: 8px;
-    padding: 0.75rem;
+    padding: 1rem;
     overflow-x: auto;
     margin: 0.5em 0;
 }
@@ -614,15 +614,14 @@ textarea {
     height: 34px;
     border-radius: 50%;
     background: var(--paper-card);
-    border: 1px solid var(--line);
+    /*border: 1px solid var(--line);*/
     color: var(--ink);
-    box-shadow: var(--shadow-card);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background var(--transition), transform var(--transition);
 }
-.scroll-btn:hover { background: var(--paper-deep); }
+.scroll-btn:hover { background: var(--paper); }
 
 /* ---------------------------------------------------
    Input area
@@ -724,9 +723,8 @@ textarea {
 
 /* Upload Button Specific*/
 #upload-btn {
-    background: var(--paper-deep);
-    color: var(--ink-soft);
-    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
 }
 #upload-btn:hover {
     background: var(--line);
@@ -861,8 +859,8 @@ textarea {
 /* Tool call block – dimmed, collapsible */
 /* Tool call block – dimmed, collapsible, human-friendly */
 .tool-call-block {
-    background: var(--paper-deep);
-    border: 1px solid var(--line);
+    background: var(--paper);
+    /*border: 1px solid var(--line);*/
     border-radius: 10px;
     padding: 0.5rem 0.8rem;
     margin: 0.5rem auto;           /* center horizontally */
@@ -870,7 +868,7 @@ textarea {
     width: 100%;
     opacity: 0.8;
     transition: opacity 0.2s;
-    font-size: 0.85rem;
+    font-size: 1rem;
     color: var(--ink-soft);
 }
 
@@ -896,24 +894,24 @@ textarea {
 }
 
 .tool-call-name {
-    font-weight: 500;
+    font-weight: 200;
     font-family: var(--font-display);
     color: var(--terracotta);
 }
 
 .tool-call-args-summary {
     color: var(--ink-soft);
-    opacity: 0.7;
-    font-size: 0.78rem;
+    opacity: 1;
+    font-size: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .tool-call-content {
-    margin-top: 0.6rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--line);
+    margin-top: 1rem;
+    padding-top: 1rem;
+    /*border-top: 1px solid var(--line);*/
 }
 
 .tool-call-args pre {
@@ -924,7 +922,7 @@ textarea {
     overflow-x: auto;
     max-height: 100px;
     overflow-y: auto;
-    border: 1px solid var(--line);
+    /*border: 1px solid var(--line);*/
 }
 
 .tool-call-result {
@@ -946,7 +944,7 @@ textarea {
     border-radius: 6px;
     padding: 0.4rem 0.6rem;
     margin-bottom: 0.3rem;
-    border: 1px solid var(--line);
+    /*border: 1px solid var(--line);*/
     font-size: 0.8rem;
 }
 .tool-result-file {
@@ -957,7 +955,7 @@ textarea {
     float: right;
     color: var(--ink-soft);
     font-size: 0.7rem;
-    background: var(--paper-deep);
+    background: var(--paper);
     padding: 0.1rem 0.4rem;
     border-radius: 12px;
 }
