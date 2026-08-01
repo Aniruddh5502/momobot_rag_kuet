@@ -10,6 +10,9 @@ from rag_processor              import query_knowledge_base
 from supabase                   import create_client
 from dotenv                     import load_dotenv
 from sanitizer                  import sanitize_input
+from logger                         import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -32,7 +35,7 @@ SYSTEM_PROMPT_FILE = os.path.join(AGENT_DIR, "MOMO.md")
 
 class RAGAgent:
     def __init__(self, model_name: str = "gemma4:31b-cloud", checkpointer=None, user_id: str = None):
-        print(f"[AGENT] Initializing with model: {model_name}")
+        logger.info(f"Initializing with model: {model_name}")
         self.llm = ChatOllama(model=model_name, streaming=True)
         self.tools = [self._create_query_tool()]
         self.llm_with_tools = self.llm.bind_tools(self.tools)
@@ -44,7 +47,7 @@ class RAGAgent:
         with open(SYSTEM_PROMPT_FILE, "r", encoding='utf-8') as f:
             self.system_prompt = SystemMessage(content=f.read())
 
-        print("[AGENT] Initialization complete")
+        logger.info("Initialization complete")
 
     def _create_query_tool(self):
         @tool
@@ -65,7 +68,7 @@ class RAGAgent:
         return query
 
     def _build_graph(self):
-        print("[AGENT] Building LangGraph workflow...")
+        logger.info("Building LangGraph workflow...")
         workflow = StateGraph(AgentState)
         workflow.add_node("agent", self.call_model)
         workflow.add_node("tools", ToolNode(self.tools))
@@ -75,45 +78,45 @@ class RAGAgent:
             messages = state["messages"]
             last_message = messages[-1]
             if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                print("[AGENT] Decision: Continue to tools")
+                logger.info("Decision: Continue to tools")
                 return "tools"
-            print("[AGENT] Decision: End")
+            logger.info("Decision: End")
             return END
 
         workflow.add_conditional_edges("agent", should_continue)
         workflow.add_edge("tools", "agent")
         compiled = workflow.compile(checkpointer=self.checkpointer)
-        print("[AGENT] Graph compiled successfully")
+        logger.info("Graph compiled successfully")
         return compiled
 
     def ensure_graph(self):
         if self.graph is None:
-            print("[AGENT] Graph is None, building now...")
+            logger.info("Graph is None, building now...")
             if self.checkpointer is None:
                 raise RuntimeError("Checkpointer not provided to RAGAgent")
             self.graph = self._build_graph()
 
     async def call_model(self, state: AgentState):
-        print(f"[AGENT] Calling LLM with {len(state['messages'])} messages")
+        logger.info(f"Calling LLM with {len(state['messages'])} messages")
         response = await self.llm_with_tools.ainvoke([self.system_prompt] + state["messages"])
-        print(f"[AGENT] LLM response received")
+        logger.info("LLM response received")
         return {"messages": [response]}
 
     async def stream_response(self, user_input: str, thread_id: str):
-        print(f"[AGENT] stream_response called with thread_id: {thread_id}")
+        logger.info(f"stream_response called with thread_id: {thread_id}")
         self.ensure_graph()
         
         # --- Input Sanitization ---
         sanitized_input, modified = sanitize_input(user_input)
         if modified:
-            print(f"[SECURITY] Input sanitized. Original: {user_input!r} -> Result: {sanitized_input!r}")
+            logger.warning(f"Input sanitized. Original: {user_input!r} -> Result: {sanitized_input!r}")
         
         inputs = {"messages": [HumanMessage(content=sanitized_input)]}
         config = {
             "configurable": {"thread_id": thread_id},
             "stream_subgraphs": True
         }
-        print("[AGENT] Starting graph stream...")
+        logger.info("Starting graph stream...")
 
         # Track which tool_call ids we've already announced a "decision" for,
         # so we don't emit the same tool_call event twice if it shows up
@@ -122,15 +125,13 @@ class RAGAgent:
 
         async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
             msg, metadata = event
-            print("=" * 60)
-            print(f"[RAW EVENT] type={type(msg).__name__}  langgraph_node={metadata.get('langgraph_node')}")
-            print(f"  content: {msg.content!r}")
+            logger.debug(f"Event: type={type(msg).__name__} langgraph_node={metadata.get('langgraph_node')} content={msg.content!r}")
 
             if isinstance(msg, AIMessage):
                 # --- Tool call decision + parameters ---
                 tool_calls = getattr(msg, 'tool_calls', None)
                 if tool_calls:
-                    print(f"  tool_calls: {tool_calls}")
+                    logger.debug(f"Tool calls: {tool_calls}")
                     for tc in tool_calls:
                         tc_id = tc.get('id')
                         if tc_id in announced_tool_calls:
@@ -150,7 +151,7 @@ class RAGAgent:
                     yield {"type": "ai", "content": msg.content}
 
             elif isinstance(msg, ToolMessage):
-                print(f"  tool_call_id: {msg.tool_call_id}  name: {msg.name}")
+                logger.debug(f"Tool result: tool_call_id={msg.tool_call_id} name={msg.name}")
                 yield {
                     "type": "tool_result",
                     "content": {
@@ -160,4 +161,4 @@ class RAGAgent:
                     },
                 }
 
-        print("[AGENT] Stream finished")
+        logger.info("Stream finished")

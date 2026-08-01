@@ -18,8 +18,11 @@ from rag_processor                      import process_upload
 from fastapi                            import File, UploadFile
 from supabase                           import create_client
 import logging
+from logger import setup_logging, get_logger
 
-logger = logging.getLogger(__name__)
+setup_logging()
+logger = get_logger(__name__)
+
 
 # Global agent instance (initialized in lifespan)
 agent = None
@@ -28,13 +31,13 @@ agent = None
 async def lifespan(app: FastAPI):
     global agent
     # Initialize the persistent checkpointer and pass it to the agent
-    print("[LIFESPAN]   Starting up, initializing checkpointer: ")
+    logger.info("Starting up, initializing checkpointer...")
     async with get_checkpointer_context() as checkpointer:
-        print("[LIFESPAN]   Checkpointer ready, creating agent...")
+        logger.info("Checkpointer ready, creating agent...")
         agent = RAGAgent(checkpointer=checkpointer)
-        print("[LIFESPAN]  Agent initialized succesfully...")
+        logger.info("Agent initialized successfully...")
         yield
-        print("[LIFESPAN]   Shutting Down...")
+        logger.info("Shutting down...")
         # Cleanup is handled automatically when exiting the 'async with' block
 
 # Load CORS origins from .env
@@ -95,31 +98,31 @@ async def signup(payload: SignupRequest):
 
 @app.post("/chat")
 async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_user)):
-    print(f"[CHAT ENDPOINT]     Received Request - message: {request.message}\n\nThread ID: {request.thread_id}")
-    print(f"[CHAT ENDPOINT]     Authenticated USER: {user.id}")
+    logger.info(f"Received Request - message: {request.message}, Thread ID: {request.thread_id}")
+    logger.info(f"Authenticated USER: {user.id}")
 
     if agent is None:
-        print("[CHAT ENDPOINT]      ERROR: Agent is None!")
+        logger.error("Agent is None!")
         raise HTTPException(status_code=500, detail="Agent not initialized")
 
     # Scope the thread_id to the user to prevent cross-user data leakage
     scoped_thread_id = f"{user.id}::{request.thread_id}"
-    print(f"[CHAT ENDPOINT]      Scoped thread_id: {scoped_thread_id}")
+    logger.info(f"Scoped thread_id: {scoped_thread_id}")
 
     async def event_generator():
-        print("[EVENT GENERATOR] Starting to stream response...")
+        logger.info("Starting to stream response...")
         try:
             async for chunk in agent.stream_response(request.message, scoped_thread_id):
                 # chunk is a dict: {'type': 'ai'|'tool', 'content': ...}
                 yield f"data: {json.dumps(chunk)}\n\n"
-            print("[EVENT GENERATOR] Streaming completed successfully")
+            logger.info("Streaming completed successfully")
         except Exception as e:
-            print(f"[EVENT GENERATOR] ERROR: {type(e).__name__}: {str(e)}")
+            logger.error(f"Event generator error: {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
-    print("[CHAT ENDPOINT]      Returning Streaming Response")
+    logger.info("Returning Streaming Response")
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 # --- Keep your existing endpoints below ---

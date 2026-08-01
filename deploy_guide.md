@@ -3,7 +3,7 @@
 This document serves as the master project tracker for the transition from local development to production.
 
 ## 🚩 Project Status: In Progress
-**Current Phase:** Phase 2: Infrastructure Blueprinting
+**Current Phase:** Phase 1.5: Technical Debt Remediation (Critical)
 
 ---
 
@@ -22,6 +22,23 @@ This document serves as the master project tracker for the transition from local
     - Develop and implement a detailed, versioned System Prompt.
 - [x] **1.4 Production CORS Policy**
     - Move `CORSMiddleware` from `allow_origins=["*"]` to a configurable `.env` list.
+
+### Phase 1.5: Technical Debt Remediation (The "Senior Engineer" Fix)
+*Goal: Fix catastrophic architectural flaws identified during technical critique.*
+- [ ] **1.5.1 Asynchronous I/O Overhaul**
+    - Replace all `requests` calls with `httpx` (async).
+    - Remove blocking synchronous calls from `async def` functions in `agent.py` and `rag_processor.py`.
+- [ ] **1.5.2 Performance Optimization (Embeddings)**
+    - Implement `asyncio.gather` or batch embedding requests to remove $O(N)$ latency in `embed_chunks`.
+- [ ] **1.5.3 Database Integrity & Reliability**
+    - Implement database transactions for `process_upload` to prevent orphan document records.
+    - Add robust retry logic for Ollama and LlamaCloud API calls.
+- [ ] **1.5.4 Security & Access Control**
+    - Remove `SUPABASE_SERVICE_ROLE_KEY` from general agent use.
+    - Implement proper Row Level Security (RLS) to ensure users only access their own documents.
+- [ ] **1.5.5 Production Observability**
+    - Replace all `print()` statements with a structured `logging` framework.
+    - Centralize environment variables into a `Config` object.
 
 ### Phase 2: Infrastructure Blueprinting
 *Goal: Create the blueprints for cloud hosting.*

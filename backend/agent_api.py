@@ -9,6 +9,9 @@ from langgraph.prebuilt         import ToolNode
 from rag_processor              import query_knowledge_base
 from supabase                   import create_client
 from dotenv                     import load_dotenv
+from logger                         import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -32,7 +35,7 @@ class RAGAgent:
         # Use environment variable if provided, else fallback to default
         if model_name is None:
             model_name = os.environ.get("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
-        print(f"[AGENT] Initializing with OpenRouter model: {model_name}")
+        logger.info(f"Initializing with OpenRouter model: {model_name}")
         
         # ChatOpenRouter reads OPENROUTER_API_KEY from environment automatically.
         # Do NOT pass openai_api_key, base_url, or default_headers.
@@ -46,7 +49,7 @@ class RAGAgent:
         self.llm_with_tools = self.llm.bind_tools(self.tools)
         self.checkpointer = checkpointer
         self.graph = None
-        print("[AGENT] Initialization complete")
+        logger.info("Initialization complete")
 
     def _create_query_tool(self):
         @tool
@@ -67,7 +70,7 @@ class RAGAgent:
         return query_knowledge_base_tool
 
     def _build_graph(self):
-        print("[AGENT] Building LangGraph workflow...")
+        logger.info("Building LangGraph workflow...")
         workflow = StateGraph(AgentState)
         workflow.add_node("agent", self.call_model)
         workflow.add_node("tools", ToolNode(self.tools))
@@ -77,62 +80,58 @@ class RAGAgent:
             messages = state["messages"]
             last_message = messages[-1]
             if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-                print("[AGENT] Decision: Continue to tools")
+                logger.info("Decision: Continue to tools")
                 return "tools"
-            print("[AGENT] Decision: End")
+            logger.info("Decision: End")
             return END
 
         workflow.add_conditional_edges("agent", should_continue)
         workflow.add_edge("tools", "agent")
         compiled = workflow.compile(checkpointer=self.checkpointer)
-        print("[AGENT] Graph compiled successfully")
+        logger.info("Graph compiled successfully")
         return compiled
 
     def ensure_graph(self):
         if self.graph is None:
-            print("[AGENT] Graph is None, building now...")
+            logger.info("Graph is None, building now...")
             if self.checkpointer is None:
                 raise RuntimeError("Checkpointer not provided to RAGAgent")
             self.graph = self._build_graph()
 
     async def call_model(self, state: AgentState):
-        print(f"[AGENT] Calling LLM with {len(state['messages'])} messages")
+        logger.info(f"Calling LLM with {len(state['messages'])} messages")
         SYSTEM_PROMPT_FILE = "MOMO.md"
         with open(SYSTEM_PROMPT_FILE, "r", encoding='utf-8') as f:
             SYSTEM_PROMPT = SystemMessage(content=f.read())
         response = await self.llm_with_tools.ainvoke([SYSTEM_PROMPT] + state["messages"])
-        print(f"[AGENT] LLM response received")
+        logger.info("LLM response received")
         return {"messages": [response]}
 
     async def stream_response(self, user_input: str, thread_id: str):
-        print(f"[AGENT] stream_response called with thread_id: {thread_id}")
+        logger.info(f"stream_response called with thread_id: {thread_id}")
         self.ensure_graph()
         inputs = {"messages": [HumanMessage(content=user_input)]}
         config = {
             "configurable": {"thread_id": thread_id},
             "stream_subgraphs": True
         }
-        print("[AGENT] Starting graph stream...")
+        logger.info("Starting graph stream...")
 
         async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
             msg, metadata = event
-            print("="*60)
-            print(f"[RAW EVENT] type={type(msg).__name__}  metadata_keys={list(metadata.keys())}")
-            print(f"  langgraph_node: {metadata.get('langgraph_node')}")
-            print(f"  content: {msg.content!r}")
+            logger.debug(f"Event: type={type(msg).__name__} metadata_keys={list(metadata.keys())} langgraph_node={metadata.get('langgraph_node')} content={msg.content!r}")
 
             if isinstance(msg, AIMessage):
                 # tool_calls is where "decision to call a tool + its parameters" lives
                 if getattr(msg, 'tool_calls', None):
-                    print(f"  tool_calls: {msg.tool_calls}")
+                    logger.debug(f"Tool calls: {msg.tool_calls}")
                 if getattr(msg, 'tool_call_chunks', None):
-                    print(f"  tool_call_chunks: {msg.tool_call_chunks}")
+                    logger.debug(f"Tool call chunks: {msg.tool_call_chunks}")
                 if msg.content:
                     yield {"type": "ai", "content": msg.content}
 
             elif isinstance(msg, ToolMessage):
-                print(f"  tool_call_id: {msg.tool_call_id}")
-                print(f"  name: {msg.name}")
+                logger.debug(f"Tool result: tool_call_id={msg.tool_call_id} name={msg.name}")
                 yield {"type": "tool", "content": msg.content}
 
-        print("[AGENT] Stream finished")
+        logger.info("Stream finished")

@@ -3,10 +3,11 @@ import os
 import json
 import tempfile
 import logging
-import requests
+import asyncio
+import httpx
 
 from typing                         import List, Dict, Any
-from llama_parse                    import LlamaParse
+from llama_cloud import LlamaCloud
 from langchain_text_splitters       import RecursiveCharacterTextSplitter
 from supabase                       import Client
 from docx                           import Document
@@ -22,7 +23,6 @@ def _parse_text_like(file_bytes: bytes) -> str:
     try:
         return file_bytes.decode('utf-8')
     except UnicodeDecodeError:
-        # Fallback to latin-1 if utf-8 fails
         return file_bytes.decode('latin-1', errors="ignore")
 
 def _parse_docx(file_bytes: bytes) -> str:
@@ -31,42 +31,40 @@ def _parse_docx(file_bytes: bytes) -> str:
     return "\n".join([para.text for para in doc.paragraphs])
 
 def _parse_heavy(file_bytes: bytes, file_name: str) -> str:
-    """Handles complex files (PDF, PPTX) using LlamaParse."""
-    api_key = os.environ.get("LLAMA_CLOUD_API_KEY")
-    if not api_key:
-        raise ValueError("LLAMA_CLOUD_API_KEY environment variable not set.")
-
-    parser = LlamaParse(api_key=api_key, result_type="markdown")
+    """Handles complex files (PDF, PPTX) using LlamaCloud."""
+    client = LlamaCloud() # reads LLAMA_CLOUD_API_KEY
     
     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file_name)[1]) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
     try:
-        documents = parser.load_data(tmp_path)
-        full_markdown = "\n\n".join(doc.text for doc in documents)
+        file = client.files.create(file=tmp_path, purpose="parse")
+        result = client.parsing.parse(
+            file_id=file.id, 
+            tier="agentic", 
+            version="latest", 
+            expand=["markdown"]
+        )
+        
+        pages_with_markers = []
+        for i, page in enumerate(result.markdown.pages, start=1):
+            pages_with_markers.append(f"--- Page {i} ---\n{page.markdown}")
+            
+        full_markdown = "\n\n".join(pages_with_markers)
         return full_markdown
     finally:
         os.unlink(tmp_path)
 
 def parse_file(file_bytes: bytes, file_name: str) -> str:
-    """
-    Dispatcher that routes files to the appropriate parser based on extension.
-    """
+    """Dispatcher that routes files to the appropriate parser based on extension."""
     ext = os.path.splitext(file_name)[1].lower()
-    
-    # 1. Simple text-based files
     if ext in [".txt", ".md"]:
         return _parse_text_like(file_bytes)
-    
-    # 2. Word documents
     if ext == ".docx":
         return _parse_docx(file_bytes)
-    
-    # 3. Complex documents (PDF, PPTX, etc.)
-    # We treat everything else as "heavy" provided it's in our allowed list
     return _parse_heavy(file_bytes, file_name)
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
+def chunk_text(text: str, chunk_size: int = 1200, overlap: int = 100) -> List[str]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=overlap,
@@ -74,44 +72,80 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
     )
     return splitter.split_text(text)
 
+async def embed_single_chunk(client: httpx.AsyncClient, chunk: str) -> List[float]:
+    """Helper for concurrent embedding requests."""
+    response = await client.post(
+        OLLAMA_URL,
+        json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": chunk},
+        timeout=120
+    )
+    response.raise_for_status()
+    return response.json()["embedding"]
 
+async def embed_chunks_async(chunks: List[str]) -> List[List[float]]:
+    """
+    Embeds chunks concurrently using httpx.
+    Replaces the sequential requests loop to eliminate O(N) latency.
+    """
+    if not chunks:
+        return []
+
+    async with httpx.AsyncClient() as client:
+        tasks = [embed_single_chunk(client, chunk) for chunk in chunks]
+        # Use gather to run requests concurrently
+        embeddings = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Handle potential exceptions in the batch
+        results = []
+        for i, res in enumerate(embeddings):
+            if isinstance(res, Exception):
+                logger.error(f"[EMBED] Error on chunk {i+1}: {res}")
+                raise res
+            results.append(res)
+            
+        return results
+
+# Keep synchronous version for compatibility with non-async callers (like some tests)
 def embed_chunks(chunks: List[str]) -> List[List[float]]:
-    embeddings = []
-    for i, chunk in enumerate(chunks):
-        print(f"[EMBED] Embedding chunk {i+1}/{len(chunks)}...")
-        try:
-            response = requests.post(
-                OLLAMA_URL,
-                json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": chunk},
-                timeout=120                         # increased from 30
-            )
-            response.raise_for_status()
-            embedding = response.json()["embedding"]
-            embeddings.append(embedding)
-            print(f"[EMBED] Chunk {i+1} done (dim {len(embedding)})")
-        except Exception as e:
-            print(f"[EMBED] Error on chunk {i+1}: {e}")
-            raise
-    return embeddings
+    """Synchronous wrapper for async embedding logic."""
+    try:
+        return asyncio.run(embed_chunks_async(chunks))
+    except RuntimeError:
+        # If already running in an event loop (e.g. pytest-asyncio)
+        import nest_asyncio
+        nest_asyncio.apply()
+        return asyncio.run(embed_chunks_async(chunks))
 
-
-async def process_upload( file_bytes: bytes, file_name: str, user_id: str, supabase_client: Client) -> Dict[str, Any]:
-
+async def process_upload(file_bytes: bytes, file_name: str, user_id: str, supabase_client: Client) -> Dict[str, Any]:
     logger.info(f"Processing upload: {file_name} for user {user_id}")
 
-    markdown = parse_file(file_bytes, file_name)    # 1. Parse
-    doc_data = {                                    # 2. Insert document
+    # 1. Parse (Synchronous, but CPU bound usually)
+    markdown = parse_file(file_bytes, file_name)
+    
+    # 2. Insert document
+    doc_data = {
         "user_id": user_id,
         "file_name": file_name,
         "file_type": os.path.splitext(file_name)[1][1:],
         "markdown_content": markdown,
     }
+    
+    # Supabase client is synchronous in this version; we should wrap it in run_in_executor 
+    # if it's a major bottleneck, but for now, the critical path is the embeddings.
     doc_result = supabase_client.table("documents").insert(doc_data).execute()
     document_id = doc_result.data[0]["id"]
 
-    chunks = chunk_text(markdown)                   # 3. chunk
-    embeddings = embed_chunks(chunks)               # 4. Embed
-    chunk_records = [                               # 5. Insert chunks
+    # 3. Chunk
+    chunks = chunk_text(markdown)
+    if not chunks:
+        logger.warning(f"No text extracted from {file_name}, skipping chunk insertion.")
+        return {"document_id": document_id, "chunk_count": 0}
+
+    # 4. Embed (CONCURRENT)
+    embeddings = await embed_chunks_async(chunks)
+
+    # 5. Insert chunks
+    chunk_records = [
         {
             "document_id": document_id,
             "chunk_index": i,
@@ -125,24 +159,17 @@ async def process_upload( file_bytes: bytes, file_name: str, user_id: str, supab
     logger.info(f"Document {document_id} stored with {len(chunks)} chunks.")
     return {"document_id": document_id, "chunk_count": len(chunks)}
 
+async def query_knowledge_base_async(query: str, supabase_client: Client, top_k: int = 5) -> str:
+    """Async version of knowledge base query."""
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            OLLAMA_URL,
+            json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": query},
+            timeout=60
+        )
+        response.raise_for_status()
+        query_embedding = response.json()["embedding"]
 
-
-def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) -> str:
-    """
-    Search all documents and return a JSON‑encoded list of relevant chunks.
-    Each chunk includes: chunk_id, document_id, file_name, content, similarity.
-    The LLM should cite chunks using the index in this list (1‑based).
-    """
-    # 1. Embed query
-    response = requests.post(
-        OLLAMA_URL,
-        json={"model": OLLAMA_EMBEDDING_MODEL, "prompt": query},
-        timeout=60
-    )
-    response.raise_for_status()
-    query_embedding = response.json()["embedding"]
-
-    # 2. Call the global search function
     result = supabase_client.rpc(
         "match_documents_global",
         {
@@ -152,14 +179,9 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) ->
         }
     ).execute()
 
-    print(f"[TOOL] Retrieved {result.data} chunks with similarities:")
-    for row in result.data:
-        print(f"  - similarity: {row['similarity']:.3f}, file: {row['file_name']}")
-
     if not result.data:
         return "No relevant documents found in the knowledge base."
 
-    # 3. Build structured list
     chunks = []
     for row in result.data:
         chunks.append({
@@ -170,5 +192,13 @@ def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) ->
             "similarity": row["similarity"]
         })
 
-    # 4. Return as JSON string
     return json.dumps(chunks, ensure_ascii=False)
+
+def query_knowledge_base(query: str, supabase_client: Client, top_k: int = 5) -> str:
+    """Synchronous wrapper for agent tools."""
+    try:
+        return asyncio.run(query_knowledge_base_async(query, supabase_client, top_k))
+    except RuntimeError:
+        import nest_asyncio
+        nest_asyncio.apply()
+        return asyncio.run(query_knowledge_base_async(query, supabase_client, top_k))
