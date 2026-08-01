@@ -57,7 +57,7 @@ def test_upload_pdf():
     assert data["chunk_count"] > 0
 
 # Isolate parser, chunker, embedder using local calls (not via API)
-from rag_processor import parse_file, chunk_text, embed_chunks
+from rag_processor import parse_file, chunk_text, embed_chunks_async
 
 def test_parse_file():
     if not os.path.exists(TEST_FILE_PATH):
@@ -75,8 +75,9 @@ def test_chunk_text():
     assert all(isinstance(c, str) for c in chunks)
 
 def test_embed_chunks():
+    import asyncio
     chunks = ["Hello world", "Testing embeddings"]
-    embeddings = embed_chunks(chunks)
+    embeddings = asyncio.run(embed_chunks_async(chunks))
     assert len(embeddings) == 2
     # Check dimension (should match 768 for nomic-embed-text)
     assert len(embeddings[0]) == 768  # or whatever your Ollama model outputs

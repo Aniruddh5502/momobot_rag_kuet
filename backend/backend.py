@@ -3,22 +3,20 @@ import os
 import json
 import httpx
 from contextlib                         import asynccontextmanager
-from fastapi                            import FastAPI, Depends, Header, HTTPException, status
+from fastapi                            import FastAPI, Depends, Header, HTTPException, status, File, UploadFile
 from fastapi.responses                  import StreamingResponse
 from fastapi.middleware.cors            import CORSMiddleware
 from pydantic                           import BaseModel, EmailStr
 from dotenv                             import load_dotenv
-from fastapi                            import File, UploadFile
-load_dotenv()
-
-from agent                              import RAGAgent
-from auth                               import get_current_user, CurrentUser
-from db                                 import get_checkpointer_context  # Import the context manager
-from rag_processor                      import process_upload
-from fastapi                            import File, UploadFile
 from supabase                           import create_client
 import logging
 from logger import setup_logging, get_logger
+
+from agent                              import RAGAgent, supabase_client
+from auth                               import get_current_user, CurrentUser
+from db                                 import get_checkpointer_context
+from rag_processor                      import process_upload
+from config                             import settings
 
 setup_logging()
 logger = get_logger(__name__)
@@ -35,7 +33,9 @@ async def lifespan(app: FastAPI):
     async with get_checkpointer_context() as checkpointer:
         logger.info("Checkpointer ready, creating agent...")
         agent = RAGAgent(checkpointer=checkpointer)
-        logger.info("Agent initialized successfully...")
+        # Pre-compile the graph during startup to avoid race conditions during first request
+        agent.ensure_graph() 
+        logger.info("Agent initialized and graph compiled successfully...")
         yield
         logger.info("Shutting down...")
         # Cleanup is handled automatically when exiting the 'async with' block
@@ -72,7 +72,7 @@ async def signup(payload: SignupRequest):
             detail="Registration is restricted to @kuet.ac.bd email addresses."
         )
 
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Supabase configuration missing."
@@ -80,9 +80,9 @@ async def signup(payload: SignupRequest):
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{SUPABASE_URL}/auth/v1/signup",
+            f"{settings.SUPABASE_URL}/auth/v1/signup",
             headers={
-                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
                 "Content-Type": "application/json",
             },
             json={
@@ -125,11 +125,7 @@ async def chat(request: ChatRequest, user: CurrentUser = Depends(get_current_use
     logger.info("Returning Streaming Response")
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-# --- Keep your existing endpoints below ---
-ADMIN_API_KEY               =   os.environ.get("ADMIN_API_KEY")
-SUPABASE_URL                =   os.environ.get("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY   =   os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
 
 
 class InviteRequest(BaseModel):
@@ -137,9 +133,9 @@ class InviteRequest(BaseModel):
 
 @app.post("/admin/invite")
 async def invite_user(payload: InviteRequest, x_admin_key: str = Header(None)):
-    if not ADMIN_API_KEY or x_admin_key != ADMIN_API_KEY:
+    if not settings.ADMIN_API_KEY or x_admin_key != settings.ADMIN_API_KEY:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid admin key.")
-    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not configured on the server.",
@@ -147,10 +143,10 @@ async def invite_user(payload: InviteRequest, x_admin_key: str = Header(None)):
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{SUPABASE_URL}/auth/v1/invite",
+            f"{settings.SUPABASE_URL}/auth/v1/invite",
             headers={
-                "apikey": SUPABASE_SERVICE_ROLE_KEY,
-                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
                 "Content-Type": "application/json",
             },
             json={"email": payload.email},
@@ -178,7 +174,24 @@ async def upload_file(
         )
 
     # 2. Read file content
-    content = await file.read()
+    # Check file size before reading into memory (Limit: 10MB)
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+    actual_size = 0
+    
+    content_chunks = []
+    while True:
+        chunk = await file.read(1024 * 64)
+        if not chunk:
+            break
+        actual_size += len(chunk)
+        if actual_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large. Maximum allowed size is 10MB."
+            )
+        content_chunks.append(chunk)
+    
+    content = b"".join(content_chunks)
 
     try:
         # 3. Process the file (parse, chunk, embed, store)

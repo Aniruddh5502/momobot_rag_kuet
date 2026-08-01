@@ -25,20 +25,31 @@ This document serves as the master project tracker for the transition from local
 
 ### Phase 1.5: Technical Debt Remediation (The "Senior Engineer" Fix)
 *Goal: Fix catastrophic architectural flaws identified during technical critique.*
-- [ ] **1.5.1 Asynchronous I/O Overhaul**
+- [x] **1.5.1 Asynchronous I/O Overhaul**
     - Replace all `requests` calls with `httpx` (async).
-    - Remove blocking synchronous calls from `async def` functions in `agent.py` and `rag_processor.py`.
-- [ ] **1.5.2 Performance Optimization (Embeddings)**
-    - Implement `asyncio.gather` or batch embedding requests to remove $O(N)$ latency in `embed_chunks`.
+    - Remove blocking synchronous calls from `async def` functions.
+- [x] **1.5.2 Performance Optimization (Embeddings)**
+    - Implement `asyncio.gather` to remove $O(N)$ latency in `embed_chunks`.
 - [ ] **1.5.3 Database Integrity & Reliability**
-    - Implement database transactions for `process_upload` to prevent orphan document records.
-    - Add robust retry logic for Ollama and LlamaCloud API calls.
+    - Implement Manual Compensating Transactions (Undo pattern) to eliminate Ghost Documents.
+    - Replace fragile `data[0]` access with defensive validation.
+    - Add robust retry logic for API calls.
 - [ ] **1.5.4 Security & Access Control**
-    - Remove `SUPABASE_SERVICE_ROLE_KEY` from general agent use.
-    - Implement proper Row Level Security (RLS) to ensure users only access their own documents.
-- [ ] **1.5.5 Production Observability**
+    - (Design Choice: Institutional Shared DB) $\to$ RLS not required.
+- [x] **1.5.5 Production Observability**
     - Replace all `print()` statements with a structured `logging` framework.
-    - Centralize environment variables into a `Config` object.
+    - [x] **1.5.5a Centralize Config**: Move all `os.environ` calls into a single `config.py` using Pydantic `BaseSettings`.
+
+### Phase 1.6: Loop Liberation (Foundation Strengthening)
+*Goal: Pure async architecture. Remove all sync-async wrappers and "hacks".*
+- [ ] **1.6.1 Pure Async Migration**
+    - Convert `query_knowledge_base` and `embed_chunks` to pure async functions.
+    - Remove `asyncio.run()` and `nest_asyncio` entirely from the codebase.
+- [ ] **1.6.2 Native Async Tools**
+    - Redefine LangGraph tools as `async def` to ensure non-blocking execution.
+- [ ] **1.6.3 Reliability Layer**
+    - Wrap LLM `ainvoke`/`astream` calls in error boundaries to prevent stream crashes.
+    - Implement `asyncio.Semaphore` in embedding loops to prevent Ollama overload.
 
 ### Phase 2: Infrastructure Blueprinting
 *Goal: Create the blueprints for cloud hosting.*
@@ -62,9 +73,9 @@ This document serves as the master project tracker for the transition from local
 *Goal: Professionalize the user experience and secure the system.*
 - [ ] **4.1 Domain & SSL**
     - Custom domain setup and HTTPS enforcement.
-- [ ] **4.2 End-to-End (E2E) Testing**
+    - [ ] **4.2 End-to-End (E2E) Testing**
     - Full flow test: Signup $\rightarrow$ Upload $\rightarrow$ Chat $\rightarrow$ Logout.
-- [ ] **4.3 Monitoring**
+    - [ ] **4.3 Monitoring**
     - Setup production logging for error tracking.
 
 ---

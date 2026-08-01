@@ -5,10 +5,11 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from contextlib import asynccontextmanager
 from psycopg_pool import AsyncConnectionPool
 from psycopg.rows import dict_row
+from config import settings
 
 load_dotenv()
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = settings.DATABASE_URL
 
 @asynccontextmanager
 async def get_checkpointer_context():

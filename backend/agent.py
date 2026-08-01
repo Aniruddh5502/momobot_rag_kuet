@@ -1,27 +1,26 @@
+# agent.py
 import os
 import operator
+import httpx
 from typing                     import Annotated, TypedDict, List
 from langchain_ollama           import ChatOllama
 from langchain.tools            import tool
 from langchain_core.messages    import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langgraph.graph            import StateGraph, END
 from langgraph.prebuilt         import ToolNode
-from rag_processor              import query_knowledge_base
+from rag_processor              import query_knowledge_base_async
 from supabase                   import create_client
 from dotenv                     import load_dotenv
 from sanitizer                  import sanitize_input
 from logger                         import get_logger
+from config                     import settings
 
 logger = get_logger(__name__)
-
-load_dotenv()
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
 class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], operator.add]
 
-supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+supabase_client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
 # Model Available (Ollama)
 # gemma4:31b-cloud
@@ -51,20 +50,19 @@ class RAGAgent:
 
     def _create_query_tool(self):
         @tool
-        def query(query: str) -> str:
+        async def query(query: str) -> str:
             """
             Search the institutional knowledge base for documents related to the query.
             Returns a JSON list of relevant chunks. Each chunk object has:
             - chunk_id (uuid)
-            - document_id (uuid)
+            - document_id
             - file_name (string)
-            - content (string)
             - similarity (float)
             When using this information in your answer, cite each claim with the
             index (1-based) of the chunk in this list. At the end, list the sources
             with file names.
             """
-            return query_knowledge_base(query, supabase_client)
+            return await query_knowledge_base_async(query, supabase_client)
         return query
 
     def _build_graph(self):
@@ -123,42 +121,49 @@ class RAGAgent:
         # across multiple chunks.
         announced_tool_calls = set()
 
-        async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
-            msg, metadata = event
-            logger.debug(f"Event: type={type(msg).__name__} langgraph_node={metadata.get('langgraph_node')} content={msg.content!r}")
+        try:
+            async for event in self.graph.astream(inputs, config=config, stream_mode="messages"):
+                msg, metadata = event
+                logger.debug(f"Event: type={type(msg).__name__} langgraph_node={metadata.get('langgraph_node')} content={msg.content!r}")
 
-            if isinstance(msg, AIMessage):
-                # --- Tool call decision + parameters ---
-                tool_calls = getattr(msg, 'tool_calls', None)
-                if tool_calls:
-                    logger.debug(f"Tool calls: {tool_calls}")
-                    for tc in tool_calls:
-                        tc_id = tc.get('id')
-                        if tc_id in announced_tool_calls:
-                            continue
-                        announced_tool_calls.add(tc_id)
-                        yield {
-                            "type": "tool_call",
-                            "content": {
-                                "id": tc_id,
-                                "name": tc.get('name'),
-                                "args": tc.get('args'),
-                            },
-                        }
+                if isinstance(msg, AIMessage):
+                    # --- Tool call decision + parameters ---
+                    tool_calls = getattr(msg, 'tool_calls', None)
+                    if tool_calls:
+                        logger.debug(f"Tool calls: {tool_calls}")
+                        for tc in tool_calls:
+                            tc_id = tc.get('id')
+                            if tc_id in announced_tool_calls:
+                                continue
+                            announced_tool_calls.add(tc_id)
+                            yield {
+                                "type": "tool_call",
+                                "content": {
+                                    "id": tc_id,
+                                    "name": tc.get('name'),
+                                    "args": tc.get('args'),
+                                },
+                            }
 
-                # --- Regular assistant text ---
-                if msg.content:
-                    yield {"type": "ai", "content": msg.content}
+                    # --- Regular assistant text ---
+                    if msg.content:
+                        yield {"type": "ai", "content": msg.content}
 
-            elif isinstance(msg, ToolMessage):
-                logger.debug(f"Tool result: tool_call_id={msg.tool_call_id} name={msg.name}")
-                yield {
-                    "type": "tool_result",
-                    "content": {
-                        "tool_call_id": msg.tool_call_id,
-                        "name": msg.name,
-                        "result": msg.content,
-                    },
-                }
+                elif isinstance(msg, ToolMessage):
+                    logger.debug(f"Tool result: tool_call_id={msg.tool_call_id} name={msg.name}")
+                    yield {
+                        "type": "tool_result",
+                        "content": {
+                            "tool_call_id": msg.tool_call_id,
+                            "name": msg.name,
+                            "result": msg.content,
+                        },
+                    }
+        except httpx.ConnectError as e:
+            logger.error(f"Connection error to LLM provider: {e}")
+            yield {"type": "ai", "content": "I'm having trouble connecting to the AI model. Please check if Ollama is running."}
+        except Exception as e:
+            logger.exception(f"Unexpected error during graph stream execution: {e}")
+            yield {"type": "ai", "content": "An internal error occurred. The team has been notified."}
 
         logger.info("Stream finished")
