@@ -8,6 +8,7 @@ from fastapi.responses                  import StreamingResponse
 from fastapi.middleware.cors            import CORSMiddleware
 from pydantic                           import BaseModel, EmailStr
 from dotenv                             import load_dotenv
+load_dotenv()
 from supabase                           import create_client
 import logging
 from logger import setup_logging, get_logger

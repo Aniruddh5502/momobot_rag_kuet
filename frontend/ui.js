@@ -55,7 +55,7 @@ export function appendBotBubble(text) {
     
     
     /*
-    This is the Icon that will bw showing beside the bot message
+    This is the Icon that will be showing beside the bot message
     indicating that the message content is from the Bot. Any svg
     can be pasted here to show that icon from figma copy as svg
     */
