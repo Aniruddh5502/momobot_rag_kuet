@@ -1,0 +1,769 @@
+/* ==========================================================================
+   Notion-inspired Design Tokens
+   Compiled from brand/UI research — see notion-design-system-research.md
+   ========================================================================== */
+
+/* ---------- Light mode (default) ---------- */
+:root {
+  color-scheme: light;
+
+  /* ----- Core neutrals ----- */
+  --color-canvas: #FFFFFF;
+  --color-canvas-secondary: #F7F6F3;
+  /* sidebar / recessed panel bg */
+  --color-text-primary: #37352F;
+  /* warm near-black, not pure #000 */
+  --color-text-secondary: #787774;
+  --color-text-tertiary: #9B9A97;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-black: #000000;
+  --color-white: #FFFFFF;
+
+  /* ----- Accent ----- */
+  --color-accent: #2EAADC;
+  /* links, focus, selection */
+  --color-accent-hover: #1F94C2;
+
+  /* ----- Content block colors: text ----- */
+  --color-text-gray: #9B9A97;
+  --color-text-brown: #64473A;
+  --color-text-orange: #D9730D;
+  --color-text-yellow: #DFAB01;
+  --color-text-green: #0F7B6C;
+  --color-text-blue: #0B6E99;
+  --color-text-purple: #6940A5;
+  --color-text-pink: #AD1A72;
+  --color-text-red: #E03E3E;
+
+  /* ----- Content block colors: background ----- */
+  --color-bg-gray: #EBECED;
+  --color-bg-brown: #E9E5E3;
+  --color-bg-orange: #FAEBDD;
+  --color-bg-yellow: #FBF3DB;
+  --color-bg-green: #DDEDEA;
+  --color-bg-blue: #DDEBF1;
+  --color-bg-purple: #EAE4F2;
+  --color-bg-pink: #F4DFEB;
+  --color-bg-red: #FBE4E4;
+
+  /* ----- Content block colors: select/pill (rgba, for tags & multi-select) ----- */
+  --color-pill-default: rgba(206, 205, 202, 0.5);
+  --color-pill-gray: rgba(155, 154, 151, 0.4);
+  --color-pill-brown: rgba(140, 46, 0, 0.2);
+  --color-pill-orange: rgba(245, 93, 0, 0.2);
+  --color-pill-yellow: rgba(233, 168, 0, 0.2);
+  --color-pill-green: rgba(0, 135, 107, 0.2);
+  --color-pill-blue: rgba(0, 120, 223, 0.2);
+  --color-pill-purple: rgba(103, 36, 222, 0.2);
+  --color-pill-pink: rgba(221, 0, 129, 0.2);
+  --color-pill-red: rgba(255, 0, 26, 0.2);
+
+  /* ----- Icon colors (slightly more saturated than text colors) ----- */
+  --color-icon-blue: #337EA9;
+
+  /* ----- Typography ----- */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-content: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-content-serif: ui-serif, Georgia, "Times New Roman", serif;
+  --font-content-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --font-size-body: 1.5rem;
+  /* Baseline scale based on New Chat button */
+  --font-size-sm: 1.25rem;
+  --font-size-xs: 1rem;
+  --font-size-h3: 1.75rem;
+  --font-size-h2: 2.25rem;
+  --font-size-h1: 3rem;
+  --line-height-body: 1.5;
+
+  /* ----- Border radius scale (small elements = tight, large = soft) ----- */
+  --radius-tight: 3px;
+  /* inline pills, tags, tooltip chips */
+  --radius-sm: 4px;
+  /* sidebar hover rows */
+  --radius-md: 6px;
+  /* buttons, inputs */
+  --radius-lg: 10px;
+  /* cards, popovers, dropdown menus */
+  --radius-xl: 16px;
+  /* modals, large panels */
+  --radius-full: 9999px;
+  /* avatars, badges, toggles */
+
+  /* ----- Elevation / shadow ----- */
+  --shadow-resting: rgba(15, 15, 15, 0.05) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.1) 0px 3px 6px,
+    rgba(15, 15, 15, 0.2) 0px 9px 24px;
+  --shadow-hover: rgba(15, 15, 15, 0.03) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.08) 0px 2px 4px;
+  --shadow-none: none;
+
+  /* ----- Motion ----- */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-moderate: 200ms;
+  --duration-slow: 250ms;
+
+  --transition-hover: background-color var(--duration-fast) var(--ease-out);
+  --transition-press: transform var(--duration-fast) var(--ease-out);
+  --transition-panel: max-height var(--duration-moderate) var(--ease-out),
+    opacity var(--duration-moderate) var(--ease-out);
+}
+
+/* ---------- Dark mode ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* ----- Core neutrals ----- */
+    --color-canvas: #191919;
+    --color-canvas-secondary: #202020;
+    --color-text-primary: rgba(255, 255, 255, 0.9);
+    --color-text-secondary: rgba(151, 154, 155, 0.95);
+    --color-text-tertiary: rgba(151, 154, 155, 0.7);
+    --color-border: rgba(255, 255, 255, 0.13);
+    --color-black: #FFFFFF;
+    /* logical inversion for icon fills etc. */
+    --color-white: #000000;
+
+    /* ----- Accent ----- */
+    --color-accent: #529CCA;
+    --color-accent-hover: #6FB2DA;
+
+    /* ----- Content block colors: text ----- */
+    --color-text-gray: rgba(151, 154, 155, 0.95);
+    --color-text-brown: #937264;
+    --color-text-orange: #FFA344;
+    --color-text-yellow: #FFDC49;
+    --color-text-green: #4DAB9A;
+    --color-text-blue: #529CCA;
+    --color-text-purple: #9A6DD7;
+    --color-text-pink: #E255A1;
+    --color-text-red: #FF7369;
+
+    /* ----- Content block colors: background ----- */
+    --color-bg-gray: #454B4E;
+    --color-bg-brown: #434040;
+    --color-bg-orange: #594A3A;
+    --color-bg-yellow: #59563B;
+    --color-bg-green: #354C4B;
+    --color-bg-blue: #364954;
+    --color-bg-purple: #443F57;
+    --color-bg-pink: #533B4C;
+    --color-bg-red: #594141;
+
+    /* ----- Content block colors: select/pill ----- */
+    --color-pill-default: rgba(206, 205, 202, 0.5);
+    --color-pill-gray: rgba(151, 154, 155, 0.5);
+    --color-pill-brown: rgba(147, 114, 100, 0.5);
+    --color-pill-orange: rgba(255, 163, 68, 0.5);
+    --color-pill-yellow: rgba(255, 220, 73, 0.5);
+    --color-pill-green: rgba(77, 171, 154, 0.5);
+    --color-pill-blue: rgba(82, 156, 202, 0.5);
+    --color-pill-purple: rgba(154, 109, 215, 0.5);
+    --color-pill-pink: rgba(226, 85, 161, 0.5);
+    --color-pill-red: rgba(255, 115, 105, 0.5);
+
+    /* ----- Elevation / shadow (lighter, more diffuse against dark bg) ----- */
+    --shadow-resting: rgba(0, 0, 0, 0.3) 0px 0px 0px 1px,
+      rgba(0, 0, 0, 0.4) 0px 3px 6px,
+      rgba(0, 0, 0, 0.5) 0px 9px 24px;
+    --shadow-hover: rgba(0, 0, 0, 0.25) 0px 0px 0px 1px,
+      rgba(0, 0, 0, 0.35) 0px 2px 4px;
+
+    /* Typography, radius, and motion tokens are scheme-independent —
+       inherited unchanged from :root */
+  }
+}
+
+/* ---------- Manual override classes (for a toggle switch, not just OS setting) ---------- */
+[data-theme="light"] {
+  color-scheme: light;
+  /* re-declare the :root light values here if you need a manual
+     toggle independent of prefers-color-scheme */
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  /* re-declare the dark @media block values here for the same reason */
+}
+
+
+/*From Here this is the document element types and classes*/
+* {
+  padding: 0px;
+  margin: 0px;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  font-family: var(--font-ui);
+}
+
+button {
+  border-radius: var(--radius-lg);
+  border: 0px;
+  font-weight: 500;
+  background-color: transparent;
+  cursor: pointer;
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+/* Hover effect */
+.app-logo:hover {
+  transform: scale(1.0) rotate(-30deg);
+}
+
+/*Classes definitions*/
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30%;
+  max-width: 300px;
+  height: 100vh;
+  padding: 20px;
+  opacity: 1;
+  background-color: black;
+  transition: 0.3s ease-in-out;
+}
+
+/* Collapsed state */
+.sidebar.collapsed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  opacity: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.sidebarToggle {
+  position: fixed;
+  left: 0;
+  top: 5%;
+  transform: translateY(-50%);
+  z-index: 1000;
+  margin: 0;
+  padding: 12px 8px;
+  background-color: transparent;
+  border-left: none;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+}
+
+.newChat {
+  background-color: var(--color-bg-blue);
+  font-family: var(--font-ui);
+  border-radius: 5px;
+  margin: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  width: 92%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: white;
+  font-size: var(--font-size-body);
+}
+
+.newChat img {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
+  /* Makes SVG white */
+}
+
+.chats {
+  background-color: var(--color-pill-gray);
+  font-family: var(--font-ui);
+  border-radius: 5px;
+  padding: 5px;
+  margin: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.userInfo {
+  height: 20%;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logoutBtn {
+  width: 93%;
+  margin: 10px;
+  border-radius: 5px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-body);
+  background-color: var(--color-bg-brown);
+  padding: 5px;
+}
+
+.chatWindow {
+  flex: 1;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  align-items: center;
+}
+
+
+.messagesContainer {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar for the messages container */
+.messagesContainer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messagesContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb {
+  background: transparent;
+  /* Uses your existing border     
+ token */
+  border-radius: var(--radius-full);
+}
+
+.messagesContainer::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+}
+
+.welcomeMessage {
+  flex: 1;
+  padding-top: 200px;
+  padding-bottom: 100px;
+  font-size: var(--font-size-h1);
+  font-family: var(--font-content);
+  font-weight: 600;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.welcomeIcon {
+  height: 70px;
+  margin: 20px;
+}
+
+.inputArea {
+  flex-shrink: 0;
+  min-height: 60px;
+  max-height: 800px;
+  min-width: 500px;
+  border-radius: 20px;
+  padding: 15px;
+  margin: 20px;
+  display: flex;
+  background-color: rgb(85, 85, 85);
+  flex-direction: column;
+  border: 2px solid black;
+}
+
+.inputMessage {
+  border-radius: 7px;
+  max-height: 400px;
+  background-color: rgb(85, 85, 85);
+  border: 0px transparent;
+  resize: none;
+  /*Makes the boxes not drag-resigable*/
+  overflow: hidden;
+}
+
+.inputMessage:focus {
+  outline: none;
+}
+
+.inputButtons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+
+.rightSizeButtons {
+  display: flex;
+  flex-direction: row;
+}
+
+/*id definitions*/
+
+.messagesContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 800px;
+  font-family: monospace;
+}
+
+.messagesContainer .user {
+  align-self: flex-end;
+  padding: 10px;
+  margin: 30px;
+  border-radius: 10px;
+  width: 80%;
+  background-color: #353535;
+  font-family: var(--font-content-mono);
+  font-size: var(--font-size-sm);
+}
+
+.messagesContainer .assistant {
+  padding: 10px;
+  margin: 10px;
+  line-height: 1.5;
+  font-weight: 300;
+  font-family: var(--font-content-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* Target elements inside the assistant message for clean           
+ formatting */
+.assistant p {
+  margin-bottom: 20px;
+  margin-top: 20px;
+}
+
+.assistant p:last-child {
+  margin-bottom: 20px;
+}
+
+.assistant ul,
+.assistant ol {
+  margin-left: 20px;
+  margin-bottom: 10px;
+}
+
+.assistant li {
+  margin-bottom: 5px;
+}
+
+.assistant strong {
+  font-weight: 900;
+  color: var(--color-text-primary);
+}
+
+/* Improved code block styling */
+.assistant pre {
+  background-color: #2b2b2b;
+  color: #f8f8f2;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+  position: relative;
+}
+
+/* Add language label */
+.assistant pre::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  color: #6b6b6b;
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.assistant pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+/* Inline code styling */
+.assistant code:not(pre code) {
+  background-color: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: var(--font-size-sm);
+  color: #d63384;
+}
+
+/* Dark mode inline code */
+@media (prefers-color-scheme: dark) {
+  .assistant code:not(pre code) {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #e83e8c;
+  }
+}
+
+.aiMessage {
+  background-color: transparent;
+}
+
+/* Tool Call Container - within .assistant */
+.tool-call-container {
+  border: 1px solid #8a8888c9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-family: var(--font-content-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* Tool Call Header */
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+
+.tool-icon {
+  font-size: var(--font-size-body);
+}
+
+.tool-name {
+  color: rgba(159, 150, 149, 0.676);
+  font-weight: 600;
+}
+
+.tool-status {
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+}
+
+.tool-status.completed {
+  opacity: 1;
+  color: #75daa7;
+}
+
+.tool-status.timeout {
+  background: #ffe6e6;
+  color: #f06a35;
+}
+
+/* Toggle button */
+.tool-toggle {
+  font-size: var(--font-size-xs);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  color: #666;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.tool-toggle:hover {
+  background: rgba(58, 58, 58, 0.774);
+}
+
+
+/* Tool Arguments */
+.tool-args {
+  margin: 0;
+  padding: 0;
+  background: #1a1a1a00;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  /* wraps long args instead of overflowing */
+  word-break: break-word;
+  font-family: var(--font-content-mono);
+  font-size: var(--font-size-sm);
+}
+
+.args-label {
+  font-weight: 500;
+  color: #55555500;
+  display: block;
+}
+
+.args-content {
+  background: #ffffff00;
+  border-radius: 10px;
+  border: 1px solid #e8e8e8;
+  font-size: var(--font-size-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+}
+
+/* Tool Result Container */
+.tool-result-container {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #1f1f1f;
+  border-radius: 10px;
+  display: block;
+}
+
+.tool-result-item {
+  margin-bottom: 12px;
+}
+
+.tool-result-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: var(--font-size-xs);
+}
+
+.similarity-tag {
+  background: rgba(46, 170, 220, 0.15);
+  color: var(--color-accent);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+.result-content-body {
+  padding: 10px 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  color: var(--color-text-secondary);
+}
+
+.tool-result-divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 12px 0;
+}
+
+.tool-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.result-icon {
+  font-size: var(--font-size-body);
+}
+
+.result-label {
+  font-weight: 500;
+  color: #bdbcbc;
+}
+
+
+/* Tool Result Content */
+.tool-result-content {
+  padding: 6px 0;
+  font-size: var(--font-size-sm);
+}
+
+.tool-result-container {
+  margin-top: 6px;
+}
+
+.tool-result-content pre.result-json {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #1a1a1a;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.result-text {
+  color: #bdbcbc;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.result-json {
+  margin: 0;
+  padding: 8px 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: var(--font-content-mono);
+  font-size: var(--font-size-sm);
+}
+
+/* Error Message within AI response */
+.assistant .error-message {
+  margin: 8px 0;
+  padding: 12px 16px;
+  background: #fff3f3;
+  border-left: 3px solid #d32f2f;
+  border-radius: 4px;
+  color: #c62828;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .assistant .tool-call-container {
+    padding: 10px 12px;
+    font-size: var(--font-size-sm);
+  }
+
+  .tool-call-header {
+    gap: 6px;
+  }
+
+  .tool-status {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .args-content {
+    max-height: 100px;
+    font-size: var(--font-size-sm);
+  }
+
+  .result-json {
+    max-height: 200px;
+    font-size: var(--font-size-sm);
+  }
+}
+
+/* Animation for tool execution */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.tool-status:not(.completed):not(.timeout) {
+  animation: pulse 1.5s ease-in-out infinite;
+}

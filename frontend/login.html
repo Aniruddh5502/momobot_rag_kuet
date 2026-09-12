@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuet RAG Sign In</title>
+    <link rel="icon" type="image/svg+xml" href="assets/imgs/icon.svg" class="app-logo">
+    
+    <!-- Add these before your script files -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <link rel="stylesheet" href="assets/css/style_auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <form id="loginForm" class="auth-form">
+            <img src="assets/imgs/icon.svg" class="logoFront">
+            <h2>Welcome..</h2>
+            <p>Please enter your details</p>
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required placeholder="email@example.com">
+            </div>
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" id="loginBtn">Sign In</button>
+            <p class="auth-footer">
+                Don't have an account? <a href="signup.html">Sign Up</a>
+            </p>
+            <div id="message" class="message"></div>
+        </form>
+    </div>
+
+
+<script type="module" src="assets/js/auth.js"></script>
+</body>
+</html>

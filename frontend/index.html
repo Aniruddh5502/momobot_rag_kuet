@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuet Agent</title>
+    <link rel="icon" type="image/svg+xml" href="assets/imgs/icon.svg" class="app-logo">
+    
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/sessions.css">
+
+    <!-- Add these before your script files -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+
+    <button class="sidebarToggle" id="sidebarToggle"><img src="assets/imgs/sidebar.svg"></button>
+    <div class="sidebar" id="sidebar">
+        <div class="chatHistory">
+            <button class="newChat" id="newChatBtn"><img src="assets/imgs/addFiles.svg">New Chat</button>
+            <span class="chats">Chats</span>
+            <div class="sessionsList" id="sessionsList"></div>
+        </div>
+        <div class="userInfo">
+            <button class="manageFiles">Manage Files</button>
+        </div>
+        <button class="logoutBtn" id="logoutBtn">
+            log out
+        </button>
+    </div>
+
+
+
+
+    <div class="chatWindow">
+        <div class="welcomeMessage">
+            <img src="assets/imgs/icon.svg" class="welcomeIcon">
+            Welcome Back!
+        </div>
+        <div class="messagesContainer">
+        </div>
+
+        <div class=inputArea>
+            <textarea class="inputMessage" id="inputMessage" placeholder="Type here..." autocorrect="on"></textarea>
+            <div class="inputButtons">
+                <button id="addFileButton"><img src="assets/imgs/addFiles.svg"></button>
+                <div class="rightSizeButtons">
+                    <button id="sendMessage"><img src="assets/imgs/send.svg"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/sessions.js"></script>
+    <script type="module" src="assets/js/chat.js"></script>
+    <script type="module" src="assets/js/handleFile.js"></script>
+    <script type="module" src="assets/js/manageFiles.js"></script>
+</body>
+
+
+</html>

@@ -1,0 +1,7 @@
+__pycache__/
+.env
+files_api_docs.md
+build/
+dist/
+*.exe
+node_modules/

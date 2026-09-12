@@ -1,0 +1,45 @@
+{
+    "name": "momobot-desktop",
+    "version": "1.0.0",
+    "description": "Professional Electron wrapper for Momobot",
+    "main": "electron/main.js",
+    "scripts": {
+        "start": "electron electron/main.js",
+        "build": "electron-builder",
+        "dist": "electron-builder",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^1.6.0",
+        "electron-store": "^8.1.0"
+    },
+    "devDependencies": {
+        "electron": "^28.0.0",
+        "electron-builder": "^24.13.3"
+    },
+    "build": {
+        "appId": "com.momobot.app",
+        "productName": "Momobot",
+        "win": {
+            "target": "nsis"
+        },
+        "extraResources": [
+            {
+                "from": "resources/",
+                "to": "resources/",
+                "filter": [
+                    "**/*",
+                    ".env"
+                ]
+            }
+        ],
+        "files": [
+            "electron/**/*",
+            "frontend/**/*",
+            "package.json"
+        ]
+    }
+}

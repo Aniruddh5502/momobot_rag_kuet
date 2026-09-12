@@ -1,0 +1,29 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuet Agent</title>
+    <link rel="icon" type="image/svg+xml" href="assets/imgs/icon.svg" class="app-logo">
+    
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/sessions.css">
+
+    <!-- Add these before your script files -->
+    <link rel="stylesheet" href="assets/css/manageFiles.css">
+</head>
+<div id="manageFilesModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>Manage Files</h3>
+            <button id="closeManageFiles" class="close-modal-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="fileListContainer" class="file-list">
+                <p class="empty-state">No files found. Please upload some .docx files to get started.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="uploadMoreBtn" class="primary-btn">Upload More</button>
+        </div>
+    </div>
+</div>
